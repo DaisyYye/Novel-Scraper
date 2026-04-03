@@ -2,6 +2,8 @@ __pycache__/
 *.pyc
 .venv/
 venv/
+.python_packages/
 .env
 .DS_Store
 output/*.txt
+sites.example.json
