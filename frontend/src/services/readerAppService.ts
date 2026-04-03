@@ -3,6 +3,7 @@ import type {
   ImportNovelInput,
   ImportNovelResult,
   ReaderAppService,
+  UpdateNovelInput,
 } from "../types/contracts";
 import type {
   ChapterContent,
@@ -109,6 +110,10 @@ async function apiRequest<T>(path: string, init?: RequestInit): Promise<T> {
   if (!response.ok) {
     const message = await response.text();
     throw new Error(message || `Request failed: ${response.status}`);
+  }
+
+  if (response.status === 204) {
+    return undefined as T;
   }
 
   return response.json() as Promise<T>;
@@ -235,6 +240,27 @@ function createApiReaderAppService(): ReaderAppService {
       return mapNovelDetail(novelResponse.novel, chaptersResponse.items);
     },
 
+    async deleteNovel(novelId) {
+      await apiRequest<void>(`/novels/${novelId}`, {
+        method: "DELETE",
+      });
+    },
+
+    async updateNovel(novelId, input) {
+      const response = await apiRequest<BackendNovelResponse>(`/novels/${novelId}`, {
+        method: "PUT",
+        body: JSON.stringify({
+          novel: {
+            title: input.title,
+            author: input.author || null,
+            description: input.description || null,
+          },
+        }),
+      });
+
+      return mapNovelSummary(response.novel);
+    },
+
     async getChapters(novelId) {
       const response = await apiRequest<BackendChapterListResponse>(`/novels/${novelId}/chapters`);
       return response.items.map(mapChapterSummary);
@@ -336,6 +362,14 @@ export async function getNovels() {
 
 export async function getNovelById(novelId: string) {
   return readerAppService.getNovelById(novelId);
+}
+
+export async function deleteNovel(novelId: string) {
+  return readerAppService.deleteNovel(novelId);
+}
+
+export async function updateNovel(novelId: string, input: UpdateNovelInput) {
+  return readerAppService.updateNovel(novelId, input);
 }
 
 export async function getChapters(novelId: string) {

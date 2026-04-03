@@ -59,6 +59,16 @@ class NovelResponse(APIModel):
     novel: NovelDetail
 
 
+class NovelUpdate(APIModel):
+    title: str
+    author: str | None = None
+    description: str | None = None
+
+
+class NovelUpdateRequest(APIModel):
+    novel: NovelUpdate
+
+
 class ChapterListResponse(APIModel):
     novel_id: str
     items: list[ChapterSummary]

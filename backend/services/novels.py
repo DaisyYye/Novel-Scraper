@@ -8,6 +8,7 @@ from backend.schemas.novels import (
     ChapterSummary,
     NovelDetail,
     NovelSummary,
+    NovelUpdate,
 )
 from backend.services.utils import loads_tags
 
@@ -86,6 +87,27 @@ def get_novel_or_404(db: Session, novel_id: str) -> Novel:
     if not novel:
         raise ValueError("Novel not found.")
     return novel
+
+
+def delete_novel_or_404(db: Session, novel_id: str) -> None:
+    novel = get_novel_or_404(db, novel_id)
+    db.delete(novel)
+    db.commit()
+
+
+def update_novel_metadata_or_404(
+    db: Session,
+    novel_id: str,
+    payload: NovelUpdate,
+) -> NovelDetail:
+    novel = get_novel_or_404(db, novel_id)
+    novel.title = payload.title.strip()
+    novel.author = payload.author.strip() if payload.author else None
+    novel.description = payload.description.strip() if payload.description else None
+    db.add(novel)
+    db.commit()
+    db.refresh(novel)
+    return serialize_novel_detail(novel)
 
 
 def get_chapter_or_404(db: Session, novel_id: str, chapter_id: str) -> Chapter:

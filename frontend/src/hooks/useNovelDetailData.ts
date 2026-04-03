@@ -3,7 +3,7 @@ import { getNovelById, getReadingProgress } from "../services/readerAppService";
 import { useAsyncData } from "./useAsyncData";
 import { useReadingProgress } from "./useReadingProgress";
 
-export function useNovelDetailData(novelId: string) {
+export function useNovelDetailData(novelId: string, refreshKey = 0) {
   const { getProgress, saveProgress } = useReadingProgress();
   const detailState = useAsyncData(async () => {
     const [detail, progress] = await Promise.all([
@@ -15,7 +15,7 @@ export function useNovelDetailData(novelId: string) {
       detail,
       progress,
     };
-  }, [novelId]);
+  }, [novelId, refreshKey]);
 
   const progress = detailState.data?.progress ?? getProgress(novelId);
 

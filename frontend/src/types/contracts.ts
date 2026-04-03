@@ -18,6 +18,12 @@ export type CreateNovelInput = {
   sourceUrl?: string;
 };
 
+export type UpdateNovelInput = {
+  title: string;
+  author?: string;
+  description?: string;
+};
+
 export type ImportNovelInput = {
   novel: {
     id?: string;
@@ -47,6 +53,8 @@ export type ImportNovelResult = {
 
 export type ReaderAppService = {
   getNovels(): Promise<NovelSummary[]>;
+  deleteNovel(novelId: string): Promise<void>;
+  updateNovel(novelId: string, input: UpdateNovelInput): Promise<NovelSummary>;
   getNovelById(novelId: string): Promise<NovelDetail>;
   getChapters(novelId: string): Promise<ChapterSummary[]>;
   getChapter(novelId: string, chapterId: string): Promise<ChapterContent>;

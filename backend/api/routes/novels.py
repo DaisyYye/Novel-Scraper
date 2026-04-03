@@ -8,9 +8,11 @@ from backend.schemas.novels import (
     ChapterResponse,
     NovelListResponse,
     NovelResponse,
+    NovelUpdateRequest,
 )
 from backend.services.importer import import_novel_payload
 from backend.services.novels import (
+    delete_novel_or_404,
     get_chapter_navigation,
     get_chapter_or_404,
     get_novel_or_404,
@@ -18,6 +20,7 @@ from backend.services.novels import (
     list_novels,
     serialize_chapter_detail,
     serialize_novel_detail,
+    update_novel_metadata_or_404,
 )
 
 router = APIRouter(tags=["novels"])
@@ -40,6 +43,28 @@ def get_novel(novel_id: str, db: Session = Depends(get_db)) -> NovelResponse:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
 
     return NovelResponse(novel=serialize_novel_detail(novel))
+
+
+@router.put("/novels/{novel_id}", response_model=NovelResponse)
+def update_novel(
+    novel_id: str,
+    payload: NovelUpdateRequest,
+    db: Session = Depends(get_db),
+) -> NovelResponse:
+    try:
+        novel = update_novel_metadata_or_404(db, novel_id, payload.novel)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+
+    return NovelResponse(novel=novel)
+
+
+@router.delete("/novels/{novel_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_novel(novel_id: str, db: Session = Depends(get_db)) -> None:
+    try:
+        delete_novel_or_404(db, novel_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
 
 
 @router.get("/novels/{novel_id}/chapters", response_model=ChapterListResponse)
