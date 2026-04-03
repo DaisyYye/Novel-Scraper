@@ -1,9 +1,11 @@
 import argparse
+import base64
 import json
 import re
 import sys
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from hashlib import md5
 from pathlib import Path
 from urllib.parse import urljoin, urlparse
 
@@ -13,6 +15,7 @@ if PROJECT_PACKAGES.exists():
 
 import requests
 from bs4 import BeautifulSoup
+from Crypto.Cipher import AES
 
 DEFAULT_HEADERS = {
     "User-Agent": (
@@ -36,6 +39,8 @@ DEFAULT_BAD_PHRASES = [
     "本章阅读完毕",
 ]
 
+INVISIBLE_CHARS_RE = re.compile(r"[\u200b-\u200f\u2060\ufeff]")
+
 
 def load_config(config_path: str) -> dict:
     with open(config_path, "r", encoding="utf-8") as f:
@@ -48,11 +53,39 @@ def sanitize_filename(name: str) -> str:
     return name or "novel"
 
 
+def request_with_retries(
+    session: requests.Session,
+    url: str,
+    timeout: int = 20,
+    retries: int = 3,
+    backoff: float = 1.0,
+) -> requests.Response:
+    last_exc: requests.RequestException | None = None
+
+    for attempt in range(retries):
+        try:
+            response = session.get(url, timeout=timeout)
+            response.raise_for_status()
+            return response
+        except requests.RequestException as exc:
+            last_exc = exc
+            if attempt == retries - 1:
+                break
+            time.sleep(backoff * (2**attempt))
+
+    raise last_exc if last_exc else requests.RequestException(f"Failed to fetch {url}")
+
+
 def fetch_soup(session: requests.Session, url: str) -> BeautifulSoup:
-    response = session.get(url, timeout=20)
-    response.raise_for_status()
+    response = request_with_retries(session, url)
     response.encoding = response.apparent_encoding or response.encoding
     return BeautifulSoup(response.text, "html.parser")
+
+
+def fetch_text(session: requests.Session, url: str) -> str:
+    response = request_with_retries(session, url)
+    response.encoding = response.apparent_encoding or response.encoding
+    return response.text
 
 
 def create_session() -> requests.Session:
@@ -78,13 +111,58 @@ def extract_title(soup: BeautifulSoup, title_selector: str | None, fallback: str
     return fallback
 
 
+def decrypt_lenglengbb_html(html: str) -> str | None:
+    match = re.search(r"""\.html\(d\("([^"]+)",\s*"([0-9a-fA-F]{32})"\)\)""", html)
+    if not match:
+        return None
+
+    encrypted_b64, secret = match.groups()
+    digest = md5(secret.encode("utf-8")).hexdigest()
+    iv = digest[:16].encode("utf-8")
+    key = digest[16:].encode("utf-8")
+
+    cipher = AES.new(key, AES.MODE_CBC, iv=iv)
+    decrypted = cipher.decrypt(base64.b64decode(encrypted_b64))
+    pad_len = decrypted[-1]
+    if 1 <= pad_len <= AES.block_size:
+        decrypted = decrypted[:-pad_len]
+
+    return decrypted.decode("utf-8", errors="ignore")
+
+
+def build_soup(session: requests.Session, url: str) -> BeautifulSoup:
+    html = fetch_text(session, url)
+    soup = BeautifulSoup(html, "html.parser")
+
+    if "lenglengbb.com" in urlparse(url).netloc:
+        decrypted_html = decrypt_lenglengbb_html(html)
+        if decrypted_html:
+            content_node = soup.select_one(".RBGsectionThree-content")
+            if content_node:
+                content_node.clear()
+                decrypted_soup = BeautifulSoup(decrypted_html, "html.parser")
+                for child in list(decrypted_soup.contents):
+                    content_node.append(child)
+
+    return soup
+
+
 def normalize_title(title: str) -> str:
+    title = INVISIBLE_CHARS_RE.sub("", title)
     title = title.strip().rstrip("_")
     title = re.sub(r"\s*\(\d+\s*/\s*\d+\)\s*$", "", title)
     return title.strip()
 
 
+def extract_title_number(title: str) -> int | None:
+    match = re.match(r"\s*(\d+)\b", title)
+    if not match:
+        return None
+    return int(match.group(1))
+
+
 def clean_line(text: str) -> str:
+    text = INVISIBLE_CHARS_RE.sub("", text)
     text = text.replace("\xa0", " ")
     text = re.sub(r"\s+", " ", text).strip()
     return text
@@ -113,6 +191,9 @@ def extract_paragraphs(node: BeautifulSoup, bad_phrases: list[str], min_line_len
     blocks = node.find_all("p") or [node]
 
     for block in blocks:
+        for br in block.find_all("br"):
+            br.replace_with("\n")
+
         raw_text = block.get_text("\n", strip=False)
         text = normalize_block(raw_text)
         if not text:
@@ -201,18 +282,43 @@ def collect_chapter_urls(session: requests.Session, config: dict, start_url_over
         return [config["start_url"]]
 
     soup = fetch_soup(session, chapter_list_url)
-    urls = []
+    entries = []
     seen = set()
+    chapter_sort_attr = config.get("chapter_sort_attr")
 
     for node in soup.select(chapter_link_selector):
         href = node.get("href")
+        data_href_attr = config.get("chapter_link_data_attr")
+        if data_href_attr and node.get(data_href_attr):
+            try:
+                href = base64.b64decode(node[data_href_attr]).decode("utf-8")
+            except Exception:
+                href = node.get("href")
         if not href:
             continue
         chapter_url = urljoin(chapter_list_url, href)
         if chapter_url in seen:
             continue
         seen.add(chapter_url)
-        urls.append(chapter_url)
+
+        sort_value = None
+        if chapter_sort_attr:
+            current = node
+            while current is not None:
+                if getattr(current, "attrs", None) and current.get(chapter_sort_attr) is not None:
+                    sort_value = current.get(chapter_sort_attr)
+                    break
+                current = getattr(current, "parent", None)
+
+        try:
+            sort_key = int(sort_value) if sort_value is not None else len(entries)
+        except ValueError:
+            sort_key = len(entries)
+
+        entries.append((sort_key, chapter_url))
+
+    entries.sort(key=lambda item: item[0])
+    urls = [chapter_url for _, chapter_url in entries]
 
     if config.get("chapter_link_order") == "desc":
         urls.reverse()
@@ -239,7 +345,7 @@ def scrape_chapter(
     try:
         while current_url and current_url not in seen_urls:
             seen_urls.add(current_url)
-            soup = fetch_soup(session, current_url)
+            soup = build_soup(session, current_url)
 
             if title == f"Chapter {chapter_num}":
                 title = normalize_title(extract_title(soup, config.get("title_selector"), title))
@@ -259,7 +365,7 @@ def scrape_chapter(
         if owns_session:
             session.close()
 
-    combined_text = "\n".join(chunk for chunk in text_chunks if chunk).strip()
+    combined_text = "\n\n\n".join(chunk for chunk in text_chunks if chunk).strip()
     if not combined_text:
         return None
 
@@ -270,8 +376,9 @@ def save_single_file(output_path: Path, title: str, text: str) -> None:
     with output_path.open("a", encoding="utf-8") as out:
         out.write(f"{title}\n")
         out.write(f"{'=' * len(title)}\n")
+        out.write("\n")
         out.write(text)
-        out.write("\n\n")
+        out.write("\n\n\n")
 
 
 def save_separate_file(output_dir: Path, chapter_num: int, title: str, text: str) -> None:
@@ -280,6 +387,7 @@ def save_separate_file(output_dir: Path, chapter_num: int, title: str, text: str
     with chapter_path.open("w", encoding="utf-8") as out:
         out.write(f"{title}\n")
         out.write(f"{'=' * len(title)}\n")
+        out.write("\n")
         out.write(text)
         out.write("\n")
 
@@ -299,6 +407,83 @@ def scrape(config: dict, args: argparse.Namespace) -> None:
     if output_mode == "single" and single_output_path.exists():
         single_output_path.unlink()
 
+    follow_next_chapters = config.get("follow_next_chapters", False)
+    max_chapters = args.max_chapters or config.get("max_chapters")
+
+    if follow_next_chapters:
+        current_url = args.start_url or config["start_url"]
+        if not max_chapters:
+            max_chapters = 100
+
+        seen_urls = set()
+        seen_title_numbers = set()
+        saved_chapters = 0
+        dedupe_by_title_number = config.get("dedupe_by_title_number", False)
+
+        while current_url:
+            if current_url in seen_urls:
+                print("Stopped: loop detected.")
+                break
+            seen_urls.add(current_url)
+            print(f"Scraping page {len(seen_urls)}: {current_url}")
+
+            try:
+                soup = build_soup(session, current_url)
+            except requests.RequestException as exc:
+                print(f"Request failed while following chapters: {exc}")
+                session.close()
+                return
+
+            title = normalize_title(extract_title(soup, config.get("title_selector"), f"Chapter {saved_chapters + 1}"))
+            chapter_text = extract_text(soup, config)
+            min_chapter_length = config.get("min_chapter_length", 100)
+            title_number = extract_title_number(title)
+
+            if len(chapter_text) < min_chapter_length:
+                print(f"Could not extract enough chapter text at {current_url}.")
+                session.close()
+                return
+
+            is_duplicate_title_number = (
+                dedupe_by_title_number
+                and title_number is not None
+                and title_number in seen_title_numbers
+            )
+
+            if is_duplicate_title_number:
+                print(f"Skipping duplicate chapter title: {title}")
+            else:
+                saved_chapters += 1
+                if title_number is not None:
+                    seen_title_numbers.add(title_number)
+
+                file_chapter_num = title_number or saved_chapters
+                if output_mode == "separate":
+                    save_separate_file(output_dir, file_chapter_num, title, chapter_text)
+                else:
+                    save_single_file(single_output_path, title, chapter_text)
+
+                if dedupe_by_title_number and title_number is not None:
+                    if title_number >= max_chapters:
+                        break
+                elif saved_chapters >= max_chapters:
+                    break
+
+            next_url = find_next_url(soup, current_url, config)
+            if not next_url:
+                break
+
+            current_url = next_url
+            if delay > 0:
+                time.sleep(delay)
+
+        session.close()
+        if output_mode == "single":
+            print(f"Saved to {single_output_path}")
+        else:
+            print(f"Saved chapter files to {output_dir}")
+        return
+
     try:
         chapter_urls = collect_chapter_urls(session, config, args.start_url)
     except requests.RequestException as exc:
@@ -309,7 +494,7 @@ def scrape(config: dict, args: argparse.Namespace) -> None:
         print("No chapter URLs found.")
         return
 
-    max_chapters = args.max_chapters or config.get("max_chapters") or len(chapter_urls)
+    max_chapters = max_chapters or len(chapter_urls)
 
     min_chapter_length = config.get("min_chapter_length", 100)
     chapter_targets = list(enumerate(chapter_urls[:max_chapters], start=1))

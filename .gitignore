@@ -7,3 +7,4 @@ venv/
 .DS_Store
 output/*.txt
 sites.example.json
+sites.lenglengbb.json
