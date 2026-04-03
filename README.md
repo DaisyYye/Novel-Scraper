@@ -36,6 +36,9 @@ python scraper.py \
 ## Config fields
 
 - `start_url`: first chapter URL
+- `chapter_list_url`: optional table-of-contents URL used to collect chapter links
+- `chapter_link_selector`: CSS selector for chapter links on the table-of-contents page
+- `chapter_link_order`: `asc` or `desc` order for collected chapter links
 - `title_selector`: CSS selector for chapter title
 - `content_selectors`: ordered list of CSS selectors for chapter content
 - `next_selector`: CSS selector for next chapter link

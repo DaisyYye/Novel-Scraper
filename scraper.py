@@ -4,7 +4,11 @@ import re
 import sys
 import time
 from pathlib import Path
-from urllib.parse import urljoin
+from urllib.parse import urljoin, urlparse
+
+PROJECT_PACKAGES = Path(__file__).with_name(".python_packages")
+if PROJECT_PACKAGES.exists():
+    sys.path.insert(0, str(PROJECT_PACKAGES))
 
 import requests
 from bs4 import BeautifulSoup
@@ -28,6 +32,7 @@ DEFAULT_BAD_PHRASES = [
     "APP测试上线",
     "设为标签",
     "方便下次阅读",
+    "本章阅读完毕",
 ]
 
 
@@ -45,7 +50,7 @@ def sanitize_filename(name: str) -> str:
 def fetch_soup(session: requests.Session, url: str) -> BeautifulSoup:
     response = session.get(url, timeout=20)
     response.raise_for_status()
-    response.encoding = response.apparent_encoding
+    response.encoding = response.apparent_encoding or response.encoding
     return BeautifulSoup(response.text, "html.parser")
 
 
@@ -66,6 +71,64 @@ def extract_title(soup: BeautifulSoup, title_selector: str | None, fallback: str
     return fallback
 
 
+def normalize_title(title: str) -> str:
+    title = title.strip().rstrip("_")
+    title = re.sub(r"\s*\(\d+\s*/\s*\d+\)\s*$", "", title)
+    return title.strip()
+
+
+def clean_line(text: str) -> str:
+    text = text.replace("\xa0", " ")
+    text = re.sub(r"\s+", " ", text).strip()
+    return text
+
+
+def normalize_block(text: str) -> str:
+    text = text.replace("\r\n", "\n").replace("\r", "\n").replace("\xa0", " ")
+    lines = [clean_line(line) for line in text.split("\n")]
+
+    cleaned_lines = []
+    previous_blank = False
+    for line in lines:
+        if not line:
+            if not previous_blank:
+                cleaned_lines.append("")
+            previous_blank = True
+            continue
+        cleaned_lines.append(line)
+        previous_blank = False
+
+    return "\n".join(cleaned_lines).strip()
+
+
+def extract_paragraphs(node: BeautifulSoup, bad_phrases: list[str], min_line_length: int) -> list[str]:
+    paragraphs = []
+    blocks = node.find_all("p") or [node]
+
+    for block in blocks:
+        raw_text = block.get_text("\n", strip=False)
+        text = normalize_block(raw_text)
+        if not text:
+            continue
+
+        kept_lines = []
+        for line in text.split("\n"):
+            stripped = line.strip()
+            if stripped and any(phrase in stripped for phrase in bad_phrases):
+                continue
+            kept_lines.append(line)
+
+        filtered_text = normalize_block("\n".join(kept_lines))
+        if not filtered_text:
+            continue
+
+        compact_length = len(filtered_text.replace("\n", "").strip())
+        if compact_length >= min_line_length:
+            paragraphs.append(filtered_text)
+
+    return paragraphs
+
+
 def extract_text(soup: BeautifulSoup, config: dict) -> str:
     for tag in soup(["script", "style", "noscript"]):
         tag.decompose()
@@ -73,44 +136,25 @@ def extract_text(soup: BeautifulSoup, config: dict) -> str:
     selectors = config.get("content_selectors", [])
     bad_phrases = config.get("bad_phrases", DEFAULT_BAD_PHRASES)
     min_line_length = config.get("min_line_length", 8)
-
-    texts = []
+    paragraphs: list[str] = []
 
     for selector in selectors:
         node = soup.select_one(selector)
         if not node:
             continue
 
-        for child in node.find_all(["p", "div", "span", "br"]):
-            text = child.get_text(" ", strip=True)
-            if not text:
-                continue
-            if any(phrase in text for phrase in bad_phrases):
-                continue
-            if len(text) >= min_line_length:
-                texts.append(text)
-
-        direct_text = node.get_text("\n", strip=True)
-        for line in direct_text.splitlines():
-            line = line.strip()
-            if not line:
-                continue
-            if any(phrase in line for phrase in bad_phrases):
-                continue
-            if len(line) >= min_line_length:
-                texts.append(line)
-
-        if texts:
+        paragraphs = extract_paragraphs(node, bad_phrases, min_line_length)
+        if paragraphs:
             break
 
     seen = set()
     cleaned = []
-    for text in texts:
+    for text in paragraphs:
         if text not in seen:
             seen.add(text)
             cleaned.append(text)
 
-    return "\n".join(cleaned)
+    return "\n\n".join(cleaned)
 
 
 def find_next_url(soup: BeautifulSoup, current_url: str, config: dict) -> str | None:
@@ -128,6 +172,82 @@ def find_next_url(soup: BeautifulSoup, current_url: str, config: dict) -> str | 
             return urljoin(current_url, anchor["href"])
 
     return None
+
+
+def chapter_key(url: str) -> str:
+    path = urlparse(url).path
+    match = re.search(r"/([^/_]+)(?:_\d+)?\.html$", path)
+    return match.group(1) if match else path
+
+
+def is_same_chapter_page(start_url: str, next_url: str) -> bool:
+    return chapter_key(start_url) == chapter_key(next_url)
+
+
+def collect_chapter_urls(session: requests.Session, config: dict, start_url_override: str | None) -> list[str]:
+    if start_url_override:
+        return [start_url_override]
+
+    chapter_list_url = config.get("chapter_list_url")
+    chapter_link_selector = config.get("chapter_link_selector")
+    if not chapter_list_url or not chapter_link_selector:
+        return [config["start_url"]]
+
+    soup = fetch_soup(session, chapter_list_url)
+    urls = []
+    seen = set()
+
+    for node in soup.select(chapter_link_selector):
+        href = node.get("href")
+        if not href:
+            continue
+        chapter_url = urljoin(chapter_list_url, href)
+        if chapter_url in seen:
+            continue
+        seen.add(chapter_url)
+        urls.append(chapter_url)
+
+    if config.get("chapter_link_order") == "desc":
+        urls.reverse()
+
+    return urls
+
+
+def scrape_chapter(
+    session: requests.Session,
+    chapter_url: str,
+    chapter_num: int,
+    config: dict,
+    delay: float,
+) -> tuple[str, str] | None:
+    current_url = chapter_url
+    seen_urls = set()
+    text_chunks = []
+    title = f"Chapter {chapter_num}"
+
+    while current_url and current_url not in seen_urls:
+        seen_urls.add(current_url)
+        soup = fetch_soup(session, current_url)
+
+        if title == f"Chapter {chapter_num}":
+            title = normalize_title(extract_title(soup, config.get("title_selector"), title))
+
+        chapter_text = extract_text(soup, config)
+        if chapter_text:
+            text_chunks.append(chapter_text)
+
+        next_url = find_next_url(soup, current_url, config)
+        if not next_url or not is_same_chapter_page(chapter_url, next_url):
+            break
+
+        current_url = next_url
+        time.sleep(delay)
+
+    combined_text = "\n".join(chunk for chunk in text_chunks if chunk).strip()
+    if not combined_text:
+        return None
+
+    return title, combined_text
 
 
 def save_single_file(output_path: Path, title: str, text: str) -> None:
@@ -152,8 +272,6 @@ def scrape(config: dict, args: argparse.Namespace) -> None:
     session = requests.Session()
     session.headers.update(DEFAULT_HEADERS)
 
-    start_url = args.start_url or config["start_url"]
-    max_chapters = args.max_chapters or config.get("max_chapters", 5)
     delay = args.delay if args.delay is not None else config.get("delay_seconds", 1.5)
     output_mode = args.output_mode or config.get("output_mode", "single")
     output_dir = Path(args.output_dir or config.get("output_dir", "output"))
@@ -165,27 +283,35 @@ def scrape(config: dict, args: argparse.Namespace) -> None:
     if output_mode == "single" and single_output_path.exists():
         single_output_path.unlink()
 
-    current_url = start_url
-    seen_urls = set()
+    try:
+        chapter_urls = collect_chapter_urls(session, config, args.start_url)
+    except requests.RequestException as exc:
+        print(f"Failed to load chapter list: {exc}")
+        return
 
-    for chapter_num in range(1, max_chapters + 1):
-        if current_url in seen_urls:
-            print("Stopped: loop detected.")
-            break
-        seen_urls.add(current_url)
+    if not chapter_urls:
+        print("No chapter URLs found.")
+        return
 
-        print(f"Scraping chapter {chapter_num}: {current_url}")
+    max_chapters = args.max_chapters or config.get("max_chapters") or len(chapter_urls)
+
+    min_chapter_length = config.get("min_chapter_length", 100)
+
+    for chapter_num, chapter_url in enumerate(chapter_urls[:max_chapters], start=1):
+        print(f"Scraping chapter {chapter_num}: {chapter_url}")
 
         try:
-            soup = fetch_soup(session, current_url)
+            chapter_data = scrape_chapter(session, chapter_url, chapter_num, config, delay)
         except requests.RequestException as exc:
             print(f"Request failed: {exc}")
             break
 
-        title = extract_title(soup, config.get("title_selector"), f"Chapter {chapter_num}")
-        chapter_text = extract_text(soup, config)
+        if not chapter_data:
+            print("Could not extract chapter text.")
+            break
 
-        if not chapter_text or len(chapter_text) < config.get("min_chapter_length", 100):
+        title, chapter_text = chapter_data
+        if len(chapter_text) < min_chapter_length:
             print("Could not extract enough chapter text.")
             break
 
@@ -194,12 +320,6 @@ def scrape(config: dict, args: argparse.Namespace) -> None:
         else:
             save_single_file(single_output_path, title, chapter_text)
 
-        next_url = find_next_url(soup, current_url, config)
-        if not next_url:
-            print("No next chapter found.")
-            break
-
-        current_url = next_url
         time.sleep(delay)
 
     if output_mode == "single":
