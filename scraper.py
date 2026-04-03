@@ -3,6 +3,7 @@ import json
 import re
 import sys
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from urllib.parse import urljoin, urlparse
 
@@ -52,6 +53,12 @@ def fetch_soup(session: requests.Session, url: str) -> BeautifulSoup:
     response.raise_for_status()
     response.encoding = response.apparent_encoding or response.encoding
     return BeautifulSoup(response.text, "html.parser")
+
+
+def create_session() -> requests.Session:
+    session = requests.Session()
+    session.headers.update(DEFAULT_HEADERS)
+    return session
 
 
 def extract_title(soup: BeautifulSoup, title_selector: str | None, fallback: str) -> str:
@@ -214,40 +221,49 @@ def collect_chapter_urls(session: requests.Session, config: dict, start_url_over
 
 
 def scrape_chapter(
-    session: requests.Session,
     chapter_url: str,
     chapter_num: int,
     config: dict,
     delay: float,
-) -> tuple[str, str] | None:
+    session: requests.Session | None = None,
+) -> tuple[int, str, str] | None:
+    owns_session = session is None
+    if session is None:
+        session = create_session()
+
     current_url = chapter_url
     seen_urls = set()
     text_chunks = []
     title = f"Chapter {chapter_num}"
 
-    while current_url and current_url not in seen_urls:
-        seen_urls.add(current_url)
-        soup = fetch_soup(session, current_url)
+    try:
+        while current_url and current_url not in seen_urls:
+            seen_urls.add(current_url)
+            soup = fetch_soup(session, current_url)
 
-        if title == f"Chapter {chapter_num}":
-            title = normalize_title(extract_title(soup, config.get("title_selector"), title))
+            if title == f"Chapter {chapter_num}":
+                title = normalize_title(extract_title(soup, config.get("title_selector"), title))
 
-        chapter_text = extract_text(soup, config)
-        if chapter_text:
-            text_chunks.append(chapter_text)
+            chapter_text = extract_text(soup, config)
+            if chapter_text:
+                text_chunks.append(chapter_text)
 
-        next_url = find_next_url(soup, current_url, config)
-        if not next_url or not is_same_chapter_page(chapter_url, next_url):
-            break
+            next_url = find_next_url(soup, current_url, config)
+            if not next_url or not is_same_chapter_page(chapter_url, next_url):
+                break
 
-        current_url = next_url
-        time.sleep(delay)
+            current_url = next_url
+            if delay > 0:
+                time.sleep(delay)
+    finally:
+        if owns_session:
+            session.close()
 
     combined_text = "\n".join(chunk for chunk in text_chunks if chunk).strip()
     if not combined_text:
         return None
 
-    return title, combined_text
+    return chapter_num, title, combined_text
 
 
 def save_single_file(output_path: Path, title: str, text: str) -> None:
@@ -269,10 +285,10 @@ def save_separate_file(output_dir: Path, chapter_num: int, title: str, text: str
 
 
 def scrape(config: dict, args: argparse.Namespace) -> None:
-    session = requests.Session()
-    session.headers.update(DEFAULT_HEADERS)
+    session = create_session()
 
     delay = args.delay if args.delay is not None else config.get("delay_seconds", 1.5)
+    workers = max(1, args.workers or config.get("workers", 1))
     output_mode = args.output_mode or config.get("output_mode", "single")
     output_dir = Path(args.output_dir or config.get("output_dir", "output"))
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -296,31 +312,70 @@ def scrape(config: dict, args: argparse.Namespace) -> None:
     max_chapters = args.max_chapters or config.get("max_chapters") or len(chapter_urls)
 
     min_chapter_length = config.get("min_chapter_length", 100)
+    chapter_targets = list(enumerate(chapter_urls[:max_chapters], start=1))
+    scraped_chapters: dict[int, tuple[str, str]] = {}
 
-    for chapter_num, chapter_url in enumerate(chapter_urls[:max_chapters], start=1):
-        print(f"Scraping chapter {chapter_num}: {chapter_url}")
+    if workers == 1:
+        for chapter_num, chapter_url in chapter_targets:
+            print(f"Scraping chapter {chapter_num}: {chapter_url}")
 
-        try:
-            chapter_data = scrape_chapter(session, chapter_url, chapter_num, config, delay)
-        except requests.RequestException as exc:
-            print(f"Request failed: {exc}")
-            break
+            try:
+                chapter_data = scrape_chapter(chapter_url, chapter_num, config, delay, session=session)
+            except requests.RequestException as exc:
+                print(f"Request failed for chapter {chapter_num}: {exc}")
+                session.close()
+                return
 
-        if not chapter_data:
-            print("Could not extract chapter text.")
-            break
+            if not chapter_data:
+                print(f"Could not extract chapter text for chapter {chapter_num}.")
+                session.close()
+                return
 
-        title, chapter_text = chapter_data
-        if len(chapter_text) < min_chapter_length:
-            print("Could not extract enough chapter text.")
-            break
+            _, title, chapter_text = chapter_data
+            if len(chapter_text) < min_chapter_length:
+                print(f"Could not extract enough chapter text for chapter {chapter_num}.")
+                session.close()
+                return
 
+            scraped_chapters[chapter_num] = (title, chapter_text)
+    else:
+        session.close()
+        with ThreadPoolExecutor(max_workers=workers) as executor:
+            future_map = {}
+            for chapter_num, chapter_url in chapter_targets:
+                print(f"Queueing chapter {chapter_num}: {chapter_url}")
+                future = executor.submit(scrape_chapter, chapter_url, chapter_num, config, delay)
+                future_map[future] = chapter_num
+
+            for future in as_completed(future_map):
+                chapter_num = future_map[future]
+                try:
+                    chapter_data = future.result()
+                except requests.RequestException as exc:
+                    print(f"Request failed for chapter {chapter_num}: {exc}")
+                    return
+
+                if not chapter_data:
+                    print(f"Could not extract chapter text for chapter {chapter_num}.")
+                    return
+
+                _, title, chapter_text = chapter_data
+                if len(chapter_text) < min_chapter_length:
+                    print(f"Could not extract enough chapter text for chapter {chapter_num}.")
+                    return
+
+                scraped_chapters[chapter_num] = (title, chapter_text)
+                print(f"Finished chapter {chapter_num}")
+
+    for chapter_num in sorted(scraped_chapters):
+        title, chapter_text = scraped_chapters[chapter_num]
         if output_mode == "separate":
             save_separate_file(output_dir, chapter_num, title, chapter_text)
         else:
             save_single_file(single_output_path, title, chapter_text)
 
-        time.sleep(delay)
+    if workers == 1:
+        session.close()
 
     if output_mode == "single":
         print(f"Saved to {single_output_path}")
@@ -334,6 +389,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--start-url", help="Override the config start URL")
     parser.add_argument("--max-chapters", type=int, help="Override the number of chapters to scrape")
     parser.add_argument("--delay", type=float, help="Override the delay between requests")
+    parser.add_argument("--workers", type=int, help="Number of chapters to fetch in parallel")
     parser.add_argument(
         "--output-mode",
         choices=["single", "separate"],

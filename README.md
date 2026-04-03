@@ -29,6 +29,8 @@ python scraper.py --config sites.example.json
 python scraper.py \
   --config sites.example.json \
   --max-chapters 20 \
+  --delay 0.2 \
+  --workers 3 \
   --output-mode separate \
   --output-dir output
 ```
@@ -48,6 +50,7 @@ python scraper.py \
 - `min_chapter_length`: minimum total chapter text length
 - `max_chapters`: default scrape count
 - `delay_seconds`: delay between requests
+- `workers`: number of chapters to fetch in parallel
 - `output_mode`: `single` or `separate`
 - `output_dir`: output folder
 - `output_name`: filename for single-file mode
@@ -56,3 +59,4 @@ python scraper.py \
 
 Use this only for content you are allowed to access and copy. Do not use it to bypass paywalls, logins, DRM, or site protections.
 
+For faster runs, try `--delay 0.2` and a small worker count such as `--workers 3` to `--workers 5`.
