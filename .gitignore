@@ -8,3 +8,5 @@ venv/
 output/*.txt
 sites.example.json
 sites.lenglengbb.json
+frontend/node_modules/
+frontend/dist/

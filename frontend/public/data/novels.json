@@ -1,0 +1,26 @@
+[
+  {
+    "id": "midnight-archive",
+    "slug": "midnight-archive",
+    "title": "The Midnight Archive",
+    "author": "A. Vale",
+    "description": "An archivist in a storm-bent city discovers that forgotten books are quietly rewriting the nights around her.",
+    "coverColor": "#d9c3a6",
+    "status": "ongoing",
+    "chapterCount": 3,
+    "updatedAt": "2026-04-03T19:40:00.000Z",
+    "tags": ["mystery", "slow burn", "literary fantasy"]
+  },
+  {
+    "id": "glass-house",
+    "slug": "glass-house",
+    "title": "The Glass House Letters",
+    "author": "M. Rowan",
+    "description": "A quiet epistolary romance told through unsent drafts, winter greenhouse notes, and a house full of reflected light.",
+    "coverColor": "#b8d4cf",
+    "status": "completed",
+    "chapterCount": 2,
+    "updatedAt": "2026-03-30T09:10:00.000Z",
+    "tags": ["romance", "slice of life", "epistolary"]
+  }
+]

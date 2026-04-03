@@ -1,0 +1,34 @@
+{
+  "novel": {
+    "id": "midnight-archive",
+    "slug": "midnight-archive",
+    "title": "The Midnight Archive",
+    "author": "A. Vale",
+    "description": "An archivist in a storm-bent city discovers that forgotten books are quietly rewriting the nights around her.",
+    "coverColor": "#d9c3a6",
+    "status": "ongoing",
+    "chapterCount": 3,
+    "updatedAt": "2026-04-03T19:40:00.000Z",
+    "tags": ["mystery", "slow burn", "literary fantasy"]
+  },
+  "chapters": [
+    {
+      "id": "001",
+      "title": "Chapter 1. Rain on the Vault Roof",
+      "index": 1,
+      "wordCount": 1382
+    },
+    {
+      "id": "002",
+      "title": "Chapter 2. A Shelf That Wasn't There Yesterday",
+      "index": 2,
+      "wordCount": 1524
+    },
+    {
+      "id": "003",
+      "title": "Chapter 3. Marginalia at 2:13 A.M.",
+      "index": 3,
+      "wordCount": 1603
+    }
+  ]
+}

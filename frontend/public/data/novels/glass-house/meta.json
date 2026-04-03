@@ -1,0 +1,28 @@
+{
+  "novel": {
+    "id": "glass-house",
+    "slug": "glass-house",
+    "title": "The Glass House Letters",
+    "author": "M. Rowan",
+    "description": "A quiet epistolary romance told through unsent drafts, winter greenhouse notes, and a house full of reflected light.",
+    "coverColor": "#b8d4cf",
+    "status": "completed",
+    "chapterCount": 2,
+    "updatedAt": "2026-03-30T09:10:00.000Z",
+    "tags": ["romance", "slice of life", "epistolary"]
+  },
+  "chapters": [
+    {
+      "id": "001",
+      "title": "Chapter 1. Condensation",
+      "index": 1,
+      "wordCount": 1180
+    },
+    {
+      "id": "002",
+      "title": "Chapter 2. Drafts Never Sent",
+      "index": 2,
+      "wordCount": 1264
+    }
+  ]
+}
