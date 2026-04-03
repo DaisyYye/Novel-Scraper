@@ -16,6 +16,7 @@ export function NovelDetailPage() {
   const [refreshKey, setRefreshKey] = useState(0);
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [form, setForm] = useState<EditFormState>({
     title: "",
@@ -36,6 +37,10 @@ export function NovelDetailPage() {
       description: detail.novel.description,
     });
   }, [detail]);
+
+  useEffect(() => {
+    setIsDescriptionExpanded(false);
+  }, [detail?.novel.description]);
 
   const handleCancel = () => {
     if (!detail) {
@@ -84,6 +89,8 @@ export function NovelDetailPage() {
   if (error || !detail) {
     return <div className="text-sm text-red-700">Unable to load this novel.</div>;
   }
+
+  const hasLongDescription = detail.novel.description.trim().length > 220;
 
   return (
     <div className="space-y-10">
@@ -212,6 +219,28 @@ export function NovelDetailPage() {
           </section>
 
           <aside className="space-y-5">
+            <div className="rounded-[30px] border border-black/5 bg-white/85 p-6 shadow-panel">
+              <p className="text-sm uppercase tracking-[0.2em] text-ink-500">About</p>
+              <div className="mt-4 space-y-3">
+                <p
+                  className={[
+                    "text-sm leading-6 text-ink-700",
+                    hasLongDescription && !isDescriptionExpanded ? "line-clamp-5" : "",
+                  ].join(" ")}
+                >
+                  {detail.novel.description}
+                </p>
+                {hasLongDescription ? (
+                  <button
+                    type="button"
+                    onClick={() => setIsDescriptionExpanded((current) => !current)}
+                    className="text-sm font-medium text-ink-700 transition hover:text-ink-900"
+                  >
+                    {isDescriptionExpanded ? "Show less" : "Show more"}
+                  </button>
+                ) : null}
+              </div>
+            </div>
             <div className="rounded-[30px] border border-black/5 bg-white/85 p-6 shadow-panel">
               <p className="text-sm uppercase tracking-[0.2em] text-ink-500">Tags</p>
               <div className="mt-4 flex flex-wrap gap-2">
