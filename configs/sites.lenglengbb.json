@@ -1,0 +1,32 @@
+{
+  "site_name": "lenglengbb",
+  "start_url": "https://www.lenglengbb.com/book/463514517610565/463514519928901.html",
+  "follow_next_chapters": true,
+  "title_selector": "#chapterTitle",
+  "content_selectors": [
+    ".RBGsectionThree-content"
+  ],
+  "next_selector": "a.nx_page",
+  "next_link_texts": [
+    "下一章",
+    "下ー章"
+  ],
+  "bad_phrases": [
+    "Loading...",
+    "未加载完",
+    "关闭广告屏蔽",
+    "更换【Firefox浏览器】",
+    "移动流量偶尔打不开",
+    "收藏网址：",
+    "(＞人＜；)"
+  ],
+  "min_line_length": 2,
+  "min_chapter_length": 100,
+  "max_chapters": 100,
+  "dedupe_by_title_number": true,
+  "delay_seconds": 0.5,
+  "output_mode": "single",
+  "json_output_dir": "data/raw",
+  "text_output_dir": "data/exports",
+  "output_name": "lenglengbb_novel.txt"
+}

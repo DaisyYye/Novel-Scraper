@@ -1,0 +1,36 @@
+{
+  "site_name": "firsttoddle",
+  "start_url": "https://m.firsttoddle.com/read_2e2m/7klbq.html",
+  "chapter_list_url": "https://m.firsttoddle.com/info_2e2m/dir.html",
+  "chapter_link_selector": "#lists li a",
+  "chapter_link_order": "asc",
+  "title_selector": ".rdtit h1",
+  "content_selectors": [
+    ".rdtext"
+  ],
+  "next_selector": "#zhangjieinfo a.next",
+  "next_link_texts": [
+    "下一章"
+  ],
+  "bad_phrases": [
+    "上一章",
+    "下一章",
+    "目录",
+    "首页",
+    "内容未完",
+    "继续阅读",
+    "下载",
+    "APP测试上线",
+    "设为标签",
+    "方便下次阅读",
+    "本章阅读完毕"
+  ],
+  "min_line_length": 8,
+  "min_chapter_length": 100,
+  "delay_seconds": 0.2,
+  "workers": 3,
+  "output_mode": "single",
+  "json_output_dir": "data/raw",
+  "text_output_dir": "data/exports",
+  "output_name": "novel.txt"
+}

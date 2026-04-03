@@ -4,6 +4,7 @@ import type { ReaderSettings } from "../../types/domain";
 type ReaderControlsProps = {
   settings: ReaderSettings;
   setSettings: Dispatch<SetStateAction<ReaderSettings>>;
+  className?: string;
 };
 
 type RangeControlProps = {
@@ -42,16 +43,18 @@ function RangeControl({
   );
 }
 
-export function ReaderControls({ settings, setSettings }: ReaderControlsProps) {
+export function ReaderControls({
+  settings,
+  setSettings,
+  className = "",
+}: ReaderControlsProps) {
   return (
-    <aside className="w-full rounded-[28px] border border-white/10 bg-white/5 p-5 backdrop-blur md:max-w-sm">
-      <div className="mb-5">
-        <h2 className="font-medium text-white">Reader settings</h2>
-        <p className="mt-1 text-sm text-ink-400">
-          Tuned for long sessions with quiet visual controls.
-        </p>
-      </div>
-
+    <aside
+      className={[
+        "w-full rounded-[28px] border border-white/10 bg-white/5 p-5 backdrop-blur md:max-w-sm",
+        className,
+      ].join(" ")}
+    >
       <div className="space-y-5">
         <div className="space-y-2 text-sm text-ink-200">
           <span>Theme</span>

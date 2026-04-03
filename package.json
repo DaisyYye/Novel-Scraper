@@ -1,0 +1,7 @@
+{
+  "name": "novel-reader-workspace",
+  "private": true,
+  "scripts": {
+    "dev": "python scripts/dev.py"
+  }
+}

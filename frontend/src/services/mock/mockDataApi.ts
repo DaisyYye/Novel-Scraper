@@ -1,16 +1,16 @@
-import type { ChapterContent, NovelDetail, NovelSummary } from "../types/domain";
+import type { ChapterContent, NovelDetail, NovelSummary } from "../../types/domain";
 
-export async function getNovels(): Promise<NovelSummary[]> {
+export async function getMockNovels(): Promise<NovelSummary[]> {
   const response = await fetch("/data/novels.json");
   return response.json();
 }
 
-export async function getNovelDetail(novelId: string): Promise<NovelDetail> {
+export async function getMockNovelDetail(novelId: string): Promise<NovelDetail> {
   const response = await fetch(`/data/novels/${novelId}/meta.json`);
   return response.json();
 }
 
-export async function getChapter(
+export async function getMockChapter(
   novelId: string,
   chapterId: string,
 ): Promise<ChapterContent> {

@@ -1,29 +1,19 @@
-import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { PageSection } from "../components/shared/PageSection";
-import { getNovelDetail } from "../lib/mockApi";
-import { useReadingProgress } from "../hooks/useReadingProgress";
-import type { NovelDetail } from "../types/domain";
+import { ProgressSummary } from "../components/shared/ProgressSummary";
+import { useNovelDetailData } from "../hooks/useNovelDetailData";
 
 export function NovelDetailPage() {
   const { novelId = "" } = useParams();
-  const [detail, setDetail] = useState<NovelDetail | null>(null);
-  const { getProgress } = useReadingProgress();
-  const progress = getProgress(novelId);
+  const { detail, progress, continueChapterId, isLoading, error } =
+    useNovelDetailData(novelId);
 
-  useEffect(() => {
-    getNovelDetail(novelId).then(setDetail);
-  }, [novelId]);
-
-  const continueChapterId = useMemo(() => {
-    if (progress?.chapterId) {
-      return progress.chapterId;
-    }
-    return detail?.chapters[0]?.id;
-  }, [detail?.chapters, progress?.chapterId]);
-
-  if (!detail) {
+  if (isLoading) {
     return <div className="text-sm text-ink-500">Loading novel details...</div>;
+  }
+
+  if (error || !detail) {
+    return <div className="text-sm text-red-700">Unable to load this novel.</div>;
   }
 
   return (
@@ -54,11 +44,17 @@ export function NovelDetailPage() {
                 <Link
                   key={chapter.id}
                   to={`/read/${detail.novel.id}/${chapter.id}`}
-                  className="flex items-center justify-between gap-4 py-4 text-sm transition hover:text-ink-900"
+                  className={[
+                    "flex items-center justify-between gap-4 py-4 text-sm transition hover:text-ink-900",
+                    progress?.chapterId === chapter.id ? "text-ink-900" : "",
+                  ].join(" ")}
                 >
                   <div>
                     <p className="font-medium text-ink-900">{chapter.title}</p>
-                    <p className="mt-1 text-ink-500">{chapter.wordCount} words</p>
+                    <p className="mt-1 text-ink-500">
+                      {chapter.wordCount} words
+                      {progress?.chapterId === chapter.id ? " · saved position" : ""}
+                    </p>
                   </div>
                   <span className="text-ink-400">#{chapter.index}</span>
                 </Link>
@@ -67,10 +63,6 @@ export function NovelDetailPage() {
           </section>
 
           <aside className="space-y-5">
-            <div className="rounded-[30px] border border-black/5 bg-white/85 p-6 shadow-panel">
-              <p className="text-sm uppercase tracking-[0.2em] text-ink-500">Author</p>
-              <p className="mt-2 font-display text-3xl text-ink-900">{detail.novel.author}</p>
-            </div>
             <div className="rounded-[30px] border border-black/5 bg-white/85 p-6 shadow-panel">
               <p className="text-sm uppercase tracking-[0.2em] text-ink-500">Tags</p>
               <div className="mt-4 flex flex-wrap gap-2">
@@ -86,11 +78,9 @@ export function NovelDetailPage() {
             </div>
             <div className="rounded-[30px] border border-black/5 bg-white/85 p-6 shadow-panel">
               <p className="text-sm uppercase tracking-[0.2em] text-ink-500">Progress</p>
-              <p className="mt-3 text-sm leading-7 text-ink-600">
-                {progress
-                  ? `You last stopped at chapter ${progress.chapterIndex}. Your scroll position is saved per novel.`
-                  : "No saved progress yet. Start at chapter one when you're ready."}
-              </p>
+              <div className="mt-3">
+                <ProgressSummary progress={progress} />
+              </div>
             </div>
           </aside>
         </div>

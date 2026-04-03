@@ -2,7 +2,7 @@ import type { PropsWithChildren, ReactNode } from "react";
 
 type PageSectionProps = PropsWithChildren<{
   eyebrow?: string;
-  title: string;
+  title?: string;
   description?: string;
   action?: ReactNode;
 }>;
@@ -23,8 +23,8 @@ export function PageSection({
               {eyebrow}
             </p>
           ) : null}
-          <div className="space-y-2">
-            <h1 className="font-display text-5xl leading-none text-ink-900">{title}</h1>
+        <div className="space-y-2">
+            {title ? <h1 className="font-display text-5xl leading-none text-ink-900">{title}</h1> : null}
             {description ? (
               <p className="max-w-2xl text-base leading-7 text-ink-600">{description}</p>
             ) : null}

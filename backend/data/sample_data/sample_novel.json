@@ -1,0 +1,38 @@
+{
+  "id": "the-midnight-archive-e5c9a64c2419",
+  "slug": "the-midnight-archive",
+  "title": "The Midnight Archive",
+  "author": "A. Vale",
+  "description": "An archivist in a storm-bent city discovers that forgotten books are quietly rewriting the nights around her.",
+  "source_site": "sample",
+  "source_url": "https://example.com/novels/the-midnight-archive",
+  "status": "ongoing",
+  "cover_url": null,
+  "tags": ["mystery", "slow burn", "literary fantasy"],
+  "chapters": [
+    {
+      "id": "the-midnight-archive-e5c9a64c2419-ch-0001",
+      "chapter_number": 1,
+      "title": "Chapter 1. Rain on the Vault Roof",
+      "content": "By the time Elian reached the archive, the entire hill smelled of wet stone and iron. Rain gathered in the seams of the old steps and slid downward in narrow silver threads.\n\nThe front doors had swollen in the storm again. She leaned her shoulder into one, felt the wood give reluctantly, and slipped inside with her satchel tight under one arm.\n\nThe building always carried two temperatures at once. Near the entrance, the air was cold and mineral. Deeper in, beyond the catalog hall and the sealed stacks, there was a dry warmth that belonged more to paper than to any fireplace.\n\nShe lit the desk lamp in the receiving room and opened the ledger to today's date. Three returns. One repair request. One unsigned note tucked between the pages, written in a hand she did not recognize: The south alcove is longer at night.",
+      "word_count": 128,
+      "source_url": "https://example.com/novels/the-midnight-archive/chapter-1"
+    },
+    {
+      "id": "the-midnight-archive-e5c9a64c2419-ch-0002",
+      "chapter_number": 2,
+      "title": "Chapter 2. A Shelf That Wasn't There Yesterday",
+      "content": "The south alcove was supposed to end with a blank wall of green marble. Elian knew the proportions by memory. Seven shelves on the left, seven on the right, the wall ahead, and the narrow reading niche beneath the lamp.\n\nTonight there were eight shelves on the left.\n\nShe did not approach immediately. It was an old rule of hers, one never written in the archive manuals: when a room changes, let the room admit it first.\n\nThe first page of the first book contained a single line.\n\nIf a memory is cataloged, does it stop wandering?",
+      "word_count": 91,
+      "source_url": "https://example.com/novels/the-midnight-archive/chapter-2"
+    },
+    {
+      "id": "the-midnight-archive-e5c9a64c2419-ch-0003",
+      "chapter_number": 3,
+      "title": "Chapter 3. Marginalia at 2:13 A.M.",
+      "content": "At 2:13 in the morning, the city buses stopped climbing the hill. The archive entered its truest kind of silence then, the kind in which every small motion acquired significance.\n\nDo not shelve this with the atlases.\n\nThe room remembers more than the readers do.\n\nCheck the west window when the rain moves sideways.\n\nRETURN WHAT WAS BORROWED.",
+      "word_count": 57,
+      "source_url": "https://example.com/novels/the-midnight-archive/chapter-3"
+    }
+  ]
+}

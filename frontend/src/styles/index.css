@@ -45,3 +45,28 @@ body {
 .reader-prose p {
   margin: 0 0 var(--reader-paragraph-spacing) 0;
 }
+
+.reader-sticky-header {
+  position: sticky;
+  backdrop-filter: blur(20px);
+}
+
+.reader-mobile-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+}
+
+@media (max-width: 639px) {
+  .reader-prose {
+    width: 100%;
+  }
+
+  .reader-mobile-link {
+    width: 100%;
+    border: 1px solid color-mix(in srgb, currentColor 12%, transparent);
+    border-radius: 999px;
+    padding: 0.7rem 1rem;
+  }
+}

@@ -1,0 +1,49 @@
+import { useEffect, useMemo } from "react";
+import { getNovels, getReadingProgress } from "../services/readerAppService";
+import { useAsyncData } from "./useAsyncData";
+import { useReadingProgress } from "./useReadingProgress";
+import type { ReadingProgress } from "../types/domain";
+
+export function useLibraryData() {
+  const { progressMap: cachedProgressMap, saveProgress } = useReadingProgress();
+  const libraryState = useAsyncData(async () => {
+    const novels = await getNovels();
+    const entries = await Promise.all(
+      novels.map(async (novel) => {
+        const progress = await getReadingProgress(novel.id);
+        return [novel.id, progress] as const;
+      }),
+    );
+
+    const progressMap = Object.fromEntries(
+      entries.filter((entry): entry is readonly [string, ReadingProgress] => Boolean(entry[1])),
+    );
+
+    return {
+      novels,
+      progressMap,
+    };
+  }, []);
+
+  const novels = libraryState.data?.novels ?? [];
+  const progressMap = libraryState.data?.progressMap ?? cachedProgressMap;
+
+  useEffect(() => {
+    Object.values(progressMap).forEach((progress) => {
+      saveProgress(progress);
+    });
+  }, [progressMap, saveProgress]);
+
+  const continueReading = useMemo(
+    () => novels.filter((novel) => Boolean(progressMap[novel.id])),
+    [novels, progressMap],
+  );
+
+  return {
+    novels,
+    continueReading,
+    progressMap,
+    isLoading: libraryState.isLoading,
+    error: libraryState.error,
+  };
+}

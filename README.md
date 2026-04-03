@@ -1,13 +1,17 @@
-# Novel TXT Scraper
+# Novel Scraper + Reader Backend
 
-A configurable Python scraper that extracts chapter text from a novel website and saves it into `.txt` files.
+This project follows the below pipeline:
+
+`scraper.py -> data/raw/*.json -> backend SQLite -> FastAPI -> frontend`
 
 ## Features
 
 - Uses a JSON config file for site-specific selectors
 - Scrapes chapter title and text
 - Follows the next chapter link automatically
-- Saves output as one file or separate chapter files
+- Writes structured novel JSON for backend import
+- Writes structured per-chapter JSON files
+- Can still export TXT files as a secondary artifact
 - Avoids duplicate lines and skips obvious navigation/promotional text
 - Supports command-line overrides
 
@@ -20,19 +24,75 @@ pip install -r requirements.txt
 ## Run
 
 ```bash
-python scraper.py --config sites.example.json
+python scraper.py --config configs/sites.example.json
 ```
+
+That defaults to JSON-first output in `data/raw/`.
 
 ## Optional overrides
 
 ```bash
 python scraper.py \
-  --config sites.example.json \
+  --config configs/sites.example.json \
   --max-chapters 20 \
   --delay 0.2 \
   --workers 3 \
+  --export-format json+txt \
   --output-mode separate \
-  --output-dir output
+  --json-output-dir data/raw \
+  --text-output-dir data/exports \
+  --json-output-name sample_novel.json
+```
+
+## Structured JSON output
+
+The scraper writes:
+
+- `data/raw/<name>.json`: full novel document for backend import
+- `data/raw/<name>/chapters/*.json`: per-chapter structured exports
+- optional TXT exports in `data/exports/` if `--export-format` includes `txt`
+
+Example novel document:
+
+```json
+{
+  "id": "example-novel-123456789abc",
+  "title": "Example Novel",
+  "author": "Example Author",
+  "source_url": "https://example.com/novel/1",
+  "chapters": [
+    {
+      "id": "example-novel-123456789abc-ch-0001",
+      "chapter_number": 1,
+      "title": "Chapter 1",
+      "content": "Chapter text",
+      "word_count": 1200,
+      "source_url": "https://example.com/novel/1/chapter-1"
+    }
+  ]
+}
+```
+
+## Import into the backend
+
+1. Start the API:
+
+```bash
+uvicorn backend.main:app --reload
+```
+
+2. Import the scraper JSON into SQLite:
+
+```bash
+python -m backend.scripts.import_novel_file data/raw/sample_novel.json
+```
+
+3. Or import through the API with a file path:
+
+```bash
+curl -X POST http://127.0.0.1:8000/novels/import ^
+  -H "Content-Type: application/json" ^
+  -d "{\"file_path\":\"data/raw/sample_novel.json\"}"
 ```
 
 ## Config fields
@@ -51,9 +111,14 @@ python scraper.py \
 - `max_chapters`: default scrape count
 - `delay_seconds`: delay between requests
 - `workers`: number of chapters to fetch in parallel
-- `output_mode`: `single` or `separate`
-- `output_dir`: output folder
-- `output_name`: filename for single-file mode
+- `export_format`: `json`, `json+txt`, or `txt`
+- `output_mode`: TXT layout, `single` or `separate`
+- `output_dir`: legacy shared output folder for both JSON and TXT
+- `json_output_dir`: structured JSON output folder
+- `text_output_dir`: TXT export folder
+- `output_name`: TXT filename for single-file mode
+- `json_output_name`: filename for the structured novel JSON
+- `novel_title`, `author`, `description`, `status`, `tags`: optional metadata overrides for the JSON export
 
 ## Notes
 

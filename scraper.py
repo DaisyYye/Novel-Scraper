@@ -11,7 +11,7 @@ from urllib.parse import urljoin, urlparse
 
 PROJECT_PACKAGES = Path(__file__).with_name(".python_packages")
 if PROJECT_PACKAGES.exists():
-    sys.path.insert(0, str(PROJECT_PACKAGES))
+    sys.path.append(str(PROJECT_PACKAGES))
 
 import requests
 from bs4 import BeautifulSoup
@@ -43,14 +43,46 @@ INVISIBLE_CHARS_RE = re.compile(r"[\u200b-\u200f\u2060\ufeff]")
 
 
 def load_config(config_path: str) -> dict:
-    with open(config_path, "r", encoding="utf-8") as f:
+    resolved_path = resolve_config_path(config_path)
+    with open(resolved_path, "r", encoding="utf-8") as f:
         return json.load(f)
+
+
+def resolve_config_path(config_path: str) -> Path:
+    path = Path(config_path)
+    if path.exists():
+        return path
+
+    fallback = Path("configs") / path.name
+    if fallback.exists():
+        return fallback
+
+    return path
 
 
 def sanitize_filename(name: str) -> str:
     name = re.sub(r'[\\/*?:"<>|]', "_", name)
     name = re.sub(r"\s+", " ", name).strip()
     return name or "novel"
+
+
+def slugify(value: str) -> str:
+    slug = re.sub(r"[^a-zA-Z0-9]+", "-", value.strip().lower()).strip("-")
+    return slug or "novel"
+
+
+def build_novel_id(title: str, source_url: str | None = None) -> str:
+    base = source_url or title
+    digest = md5(base.encode("utf-8")).hexdigest()[:12]
+    return f"{slugify(title)}-{digest}"
+
+
+def build_chapter_id(novel_id: str, chapter_number: int) -> str:
+    return f"{novel_id}-ch-{chapter_number:04d}"
+
+
+def count_words(content: str) -> int:
+    return len([part for part in content.split() if part.strip()])
 
 
 def request_with_retries(
@@ -392,19 +424,112 @@ def save_separate_file(output_dir: Path, chapter_num: int, title: str, text: str
         out.write("\n")
 
 
+def build_novel_payload(
+    config: dict,
+    output_name: str,
+    chapters: list[dict[str, object]],
+) -> dict[str, object]:
+    source_url = config.get("source_url") or config.get("chapter_list_url") or config.get("start_url")
+    title = (
+        config.get("novel_title")
+        or config.get("title")
+        or Path(output_name).stem.replace("_", " ").strip()
+        or "Novel"
+    )
+    novel_id = config.get("novel_id") or build_novel_id(title, source_url)
+
+    normalized_chapters = []
+    for chapter in chapters:
+        chapter_number = int(chapter["chapter_number"])
+        normalized_chapters.append(
+            {
+                "id": chapter.get("id") or build_chapter_id(novel_id, chapter_number),
+                "chapter_number": chapter_number,
+                "title": str(chapter["title"]),
+                "content": str(chapter["content"]),
+                "word_count": int(chapter.get("word_count") or count_words(str(chapter["content"]))),
+                "source_url": chapter.get("source_url"),
+            }
+        )
+
+    return {
+        "id": novel_id,
+        "slug": config.get("slug") or slugify(title),
+        "title": title,
+        "author": config.get("author"),
+        "description": config.get("description"),
+        "source_site": config.get("site_name"),
+        "source_url": source_url,
+        "status": config.get("status", "ongoing"),
+        "cover_url": config.get("cover_url"),
+        "tags": list(config.get("tags", [])),
+        "chapters": normalized_chapters,
+    }
+
+
+def save_structured_exports(
+    output_dir: Path,
+    json_output_name: str,
+    novel_payload: dict[str, object],
+) -> tuple[Path, Path]:
+    json_path = output_dir / json_output_name
+    chapter_dir = output_dir / sanitize_filename(Path(json_output_name).stem) / "chapters"
+    chapter_dir.mkdir(parents=True, exist_ok=True)
+
+    json_path.write_text(
+        json.dumps(novel_payload, ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
+
+    for chapter in novel_payload["chapters"]:
+        chapter_number = int(chapter["chapter_number"])
+        chapter_path = chapter_dir / f"{chapter_number:03d}.json"
+        chapter_document = {
+            "id": chapter["id"],
+            "novel_id": novel_payload["id"],
+            "chapter_number": chapter_number,
+            "title": chapter["title"],
+            "content": chapter["content"],
+            "word_count": chapter["word_count"],
+            "source_url": chapter["source_url"],
+        }
+        chapter_path.write_text(
+            json.dumps(chapter_document, ensure_ascii=False, indent=2),
+            encoding="utf-8",
+        )
+
+    return json_path, chapter_dir
+
+
 def scrape(config: dict, args: argparse.Namespace) -> None:
     session = create_session()
 
     delay = args.delay if args.delay is not None else config.get("delay_seconds", 1.5)
     workers = max(1, args.workers or config.get("workers", 1))
-    output_mode = args.output_mode or config.get("output_mode", "single")
-    output_dir = Path(args.output_dir or config.get("output_dir", "output"))
-    output_dir.mkdir(parents=True, exist_ok=True)
+    export_format = args.export_format or config.get("export_format", "json")
+    txt_output_mode = args.output_mode or config.get("output_mode", "single")
+    legacy_output_dir = args.output_dir or config.get("output_dir")
+    json_output_dir = Path(
+        args.json_output_dir
+        or config.get("json_output_dir")
+        or legacy_output_dir
+        or "data/raw"
+    )
+    text_output_dir = Path(
+        args.text_output_dir
+        or config.get("text_output_dir")
+        or legacy_output_dir
+        or "data/exports"
+    )
+    json_output_dir.mkdir(parents=True, exist_ok=True)
+    if export_format in {"txt", "json+txt"}:
+        text_output_dir.mkdir(parents=True, exist_ok=True)
 
-    output_name = args.output_name or config.get("output_name", "novel.txt")
-    single_output_path = output_dir / output_name
+    txt_output_name = args.output_name or config.get("output_name", "novel.txt")
+    json_output_name = args.json_output_name or config.get("json_output_name", "novel.json")
+    single_output_path = text_output_dir / txt_output_name
 
-    if output_mode == "single" and single_output_path.exists():
+    if export_format in {"txt", "json+txt"} and txt_output_mode == "single" and single_output_path.exists():
         single_output_path.unlink()
 
     follow_next_chapters = config.get("follow_next_chapters", False)
@@ -419,6 +544,7 @@ def scrape(config: dict, args: argparse.Namespace) -> None:
         seen_title_numbers = set()
         saved_chapters = 0
         dedupe_by_title_number = config.get("dedupe_by_title_number", False)
+        structured_chapters: list[dict[str, object]] = []
 
         while current_url:
             if current_url in seen_urls:
@@ -457,11 +583,25 @@ def scrape(config: dict, args: argparse.Namespace) -> None:
                 if title_number is not None:
                     seen_title_numbers.add(title_number)
 
-                file_chapter_num = title_number or saved_chapters
-                if output_mode == "separate":
-                    save_separate_file(output_dir, file_chapter_num, title, chapter_text)
-                else:
-                    save_single_file(single_output_path, title, chapter_text)
+                # Use scrape order as the stable backend chapter number.
+                # Some sources reuse or reset visible title numbers, which breaks
+                # unique ordering in the database if we trust the title alone.
+                file_chapter_num = saved_chapters
+                structured_chapters.append(
+                    {
+                        "chapter_number": file_chapter_num,
+                        "title": title,
+                        "content": chapter_text,
+                        "source_url": current_url,
+                        "word_count": count_words(chapter_text),
+                    }
+                )
+
+                if export_format in {"txt", "json+txt"}:
+                    if txt_output_mode == "separate":
+                        save_separate_file(text_output_dir, file_chapter_num, title, chapter_text)
+                    else:
+                        save_single_file(single_output_path, title, chapter_text)
 
                 if dedupe_by_title_number and title_number is not None:
                     if title_number >= max_chapters:
@@ -478,10 +618,15 @@ def scrape(config: dict, args: argparse.Namespace) -> None:
                 time.sleep(delay)
 
         session.close()
-        if output_mode == "single":
-            print(f"Saved to {single_output_path}")
-        else:
-            print(f"Saved chapter files to {output_dir}")
+        novel_payload = build_novel_payload(config, json_output_name, structured_chapters)
+        json_path, chapter_json_dir = save_structured_exports(json_output_dir, json_output_name, novel_payload)
+        print(f"Saved structured novel JSON to {json_path}")
+        print(f"Saved structured chapter JSON to {chapter_json_dir}")
+        if export_format in {"txt", "json+txt"}:
+            if txt_output_mode == "single":
+                print(f"Saved text export to {single_output_path}")
+            else:
+                print(f"Saved text chapter files to {text_output_dir}")
         return
 
     try:
@@ -499,6 +644,7 @@ def scrape(config: dict, args: argparse.Namespace) -> None:
     min_chapter_length = config.get("min_chapter_length", 100)
     chapter_targets = list(enumerate(chapter_urls[:max_chapters], start=1))
     scraped_chapters: dict[int, tuple[str, str]] = {}
+    chapter_source_urls = {chapter_num: chapter_url for chapter_num, chapter_url in chapter_targets}
 
     if workers == 1:
         for chapter_num, chapter_url in chapter_targets:
@@ -554,18 +700,35 @@ def scrape(config: dict, args: argparse.Namespace) -> None:
 
     for chapter_num in sorted(scraped_chapters):
         title, chapter_text = scraped_chapters[chapter_num]
-        if output_mode == "separate":
-            save_separate_file(output_dir, chapter_num, title, chapter_text)
-        else:
-            save_single_file(single_output_path, title, chapter_text)
+        if export_format in {"txt", "json+txt"}:
+            if txt_output_mode == "separate":
+                save_separate_file(text_output_dir, chapter_num, title, chapter_text)
+            else:
+                save_single_file(single_output_path, title, chapter_text)
 
     if workers == 1:
         session.close()
 
-    if output_mode == "single":
-        print(f"Saved to {single_output_path}")
-    else:
-        print(f"Saved chapter files to {output_dir}")
+    structured_chapters = [
+        {
+            "chapter_number": chapter_num,
+            "title": scraped_chapters[chapter_num][0],
+            "content": scraped_chapters[chapter_num][1],
+            "source_url": chapter_source_urls.get(chapter_num),
+            "word_count": count_words(scraped_chapters[chapter_num][1]),
+        }
+        for chapter_num in sorted(scraped_chapters)
+    ]
+    novel_payload = build_novel_payload(config, json_output_name, structured_chapters)
+    json_path, chapter_json_dir = save_structured_exports(json_output_dir, json_output_name, novel_payload)
+
+    print(f"Saved structured novel JSON to {json_path}")
+    print(f"Saved structured chapter JSON to {chapter_json_dir}")
+    if export_format in {"txt", "json+txt"}:
+        if txt_output_mode == "single":
+            print(f"Saved text export to {single_output_path}")
+        else:
+            print(f"Saved text chapter files to {text_output_dir}")
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -576,12 +739,20 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--delay", type=float, help="Override the delay between requests")
     parser.add_argument("--workers", type=int, help="Number of chapters to fetch in parallel")
     parser.add_argument(
+        "--export-format",
+        choices=["json", "json+txt", "txt"],
+        help="Primary export format. JSON is import-ready; TXT is optional.",
+    )
+    parser.add_argument(
         "--output-mode",
         choices=["single", "separate"],
-        help="Save all chapters in one file or one file per chapter",
+        help="TXT export layout when TXT output is enabled",
     )
-    parser.add_argument("--output-dir", help="Directory for output files")
+    parser.add_argument("--output-dir", help="Legacy shared output directory for both JSON and TXT")
+    parser.add_argument("--json-output-dir", help="Directory for structured JSON output")
+    parser.add_argument("--text-output-dir", help="Directory for TXT exports")
     parser.add_argument("--output-name", help="Output filename for single-file mode")
+    parser.add_argument("--json-output-name", help="Output filename for the structured novel JSON")
     return parser
 
 
