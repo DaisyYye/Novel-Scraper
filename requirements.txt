@@ -7,3 +7,5 @@ sqlalchemy
 pydantic
 PyJWT
 cryptography
+python-dotenv
+psycopg[binary]

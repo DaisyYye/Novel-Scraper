@@ -19,13 +19,14 @@ class Settings:
         self.api_version = "0.1.0"
         self.base_dir = BASE_DIR
         self.backend_data_dir = self.base_dir / "backend" / "data"
+        raw_database_url = os.getenv("DATABASE_URL", "").strip()
         self.database_path = Path(
             os.getenv(
                 "DATABASE_PATH",
                 str(self.backend_data_dir / "novel_reader.db"),
             )
         )
-        self.database_url = f"sqlite:///{self.database_path.as_posix()}"
+        self.database_url = self._resolve_database_url(raw_database_url)
         self.sample_data_dir = self.backend_data_dir / "sample_data"
         self.configs_dir = self.base_dir / "configs"
         self.raw_data_dir = self.base_dir / "data" / "raw"
@@ -40,6 +41,19 @@ class Settings:
         self.clerk_jwks_url = os.getenv("CLERK_JWKS_URL", "").strip()
         self.clerk_issuer = os.getenv("CLERK_ISSUER", "").strip()
         self.clerk_audience = os.getenv("CLERK_AUDIENCE", "").strip() or None
+
+    def _resolve_database_url(self, raw_database_url: str) -> str:
+        if not raw_database_url:
+            return f"sqlite:///{self.database_path.as_posix()}"
+
+        # Railway/Postgres URLs may be provided in libpq-style form.
+        if raw_database_url.startswith("postgres://"):
+            return raw_database_url.replace("postgres://", "postgresql+psycopg://", 1)
+
+        if raw_database_url.startswith("postgresql://"):
+            return raw_database_url.replace("postgresql://", "postgresql+psycopg://", 1)
+
+        return raw_database_url
 
 
 settings = Settings()

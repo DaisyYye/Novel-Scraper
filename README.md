@@ -135,6 +135,27 @@ On first authenticated request, the backend verifies the Clerk session token, lo
 user, creates an internal `users` row if needed, and assigns `admin` only when the email matches
 `ADMIN_EMAIL`. All other users are stored as `reader`.
 
+## Deploy the backend on Railway
+
+For this repo, Railway should build from the repo root, not `/backend`.
+
+- Root Directory: leave empty
+- Build Command: `pip install -r requirements.txt`
+- Start Command: `uvicorn backend.main:app --host 0.0.0.0 --port $PORT`
+
+Set these Railway variables for the backend service:
+
+- `DATABASE_URL`: use Railway Postgres if available
+- `ADMIN_EMAIL`
+- `ALLOWED_ORIGINS`: your deployed frontend URL
+- `CLERK_SECRET_KEY`
+- `CLERK_ISSUER`
+- `CLERK_JWKS_URL`
+- `CLERK_AUDIENCE`: optional
+
+If you do not set `DATABASE_URL`, the app uses SQLite at `backend/data/novel_reader.db`, which is
+fine locally but not ideal for Railway unless you attach persistent storage.
+
 ## Config fields
 
 - `start_url`: first chapter URL

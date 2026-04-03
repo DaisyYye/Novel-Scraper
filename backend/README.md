@@ -34,6 +34,7 @@ for roles and ownership.
 Required environment variables:
 
 ```bash
+DATABASE_URL=
 ADMIN_EMAIL=owner@example.com
 CLERK_SECRET_KEY=sk_test_...
 CLERK_ISSUER=https://your-clerk-domain.clerk.accounts.dev
@@ -41,6 +42,38 @@ CLERK_JWKS_URL=https://your-clerk-domain.clerk.accounts.dev/.well-known/jwks.jso
 CLERK_AUDIENCE=
 ALLOWED_ORIGINS=http://localhost:5173,http://127.0.0.1:5173
 ```
+
+## Deploy on Railway
+
+Use the repo root as the Railway service root. Do not set the Railway Root Directory to `/backend`,
+because this backend imports modules as `backend.*` and installs dependencies from the repo-level
+`requirements.txt`.
+
+Recommended Railway settings:
+
+- Root Directory: leave empty
+- Build Command: `pip install -r requirements.txt`
+- Start Command: `uvicorn backend.main:app --host 0.0.0.0 --port $PORT`
+
+Recommended variables:
+
+```bash
+DATABASE_URL=${{Postgres.DATABASE_URL}}
+ADMIN_EMAIL=owner@example.com
+ALLOWED_ORIGINS=https://your-frontend-domain
+CLERK_SECRET_KEY=sk_live_...
+CLERK_ISSUER=https://your-clerk-domain.clerk.accounts.dev
+CLERK_JWKS_URL=https://your-clerk-domain.clerk.accounts.dev/.well-known/jwks.json
+CLERK_AUDIENCE=
+```
+
+Notes:
+
+- `DATABASE_URL` is optional for local development. If omitted, the app falls back to
+  `backend/data/novel_reader.db`.
+- On Railway, prefer adding a Postgres service and wiring its `DATABASE_URL` into the backend.
+- If you stay on SQLite in production, the filesystem is not durable across redeploys unless you add
+  a persistent volume.
 
 Behavior:
 
