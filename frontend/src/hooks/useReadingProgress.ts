@@ -1,13 +1,16 @@
 import { useCallback } from "react";
+import { useAppAuth } from "../auth/AuthContext";
 import type { ReadingProgress } from "../types/domain";
 import { useLocalStorageState } from "./useLocalStorageState";
 import type { ReadingProgressMap } from "../lib/readerStorage";
 import { readReadingProgressMap, storageKeys } from "../lib/readerStorage";
 
 export function useReadingProgress() {
+  const { user } = useAppAuth();
+  const storageKey = `${storageKeys.readingProgress}:${user?.id ?? "anonymous"}`;
   const [progressMap, setProgressMap] = useLocalStorageState<ReadingProgressMap>(
-    storageKeys.readingProgress,
-    readReadingProgressMap,
+    storageKey,
+    () => readReadingProgressMap(storageKey),
   );
 
   const saveProgress = useCallback(

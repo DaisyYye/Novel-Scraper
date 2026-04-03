@@ -42,5 +42,4 @@ class Novel(Base):
         "ReadingProgress",
         back_populates="novel",
         cascade="all, delete-orphan",
-        uselist=False,
     )

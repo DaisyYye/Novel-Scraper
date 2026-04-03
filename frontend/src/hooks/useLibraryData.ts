@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useAppAuth } from "../auth/AuthContext";
 import { deleteNovel, getNovels, getReadingProgress } from "../services/readerAppService";
 import { useAsyncData } from "./useAsyncData";
 import { useReadingProgress } from "./useReadingProgress";
 import type { ReadingProgress } from "../types/domain";
 
 export function useLibraryData() {
+  const { isAdmin } = useAppAuth();
   const { progressMap: cachedProgressMap, saveProgress, clearProgress } = useReadingProgress();
   const [reloadKey, setReloadKey] = useState(0);
   const libraryState = useAsyncData(async () => {
@@ -54,6 +56,8 @@ export function useLibraryData() {
     continueReading,
     progressMap,
     removeNovel,
+    refresh: () => setReloadKey((current) => current + 1),
+    isAdmin,
     isLoading: libraryState.isLoading,
     error: libraryState.error,
   };

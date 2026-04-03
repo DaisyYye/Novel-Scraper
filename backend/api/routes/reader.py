@@ -1,7 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
+from backend.api.deps import get_current_user
 from backend.db.session import get_db
+from backend.models import User
 from backend.schemas.reader import (
     ReaderSettingsResponse,
     ReaderSettingsUpdate,
@@ -20,8 +22,11 @@ router = APIRouter(tags=["reader"])
 
 
 @router.get("/reader-settings", response_model=ReaderSettingsResponse)
-def fetch_reader_settings(db: Session = Depends(get_db)) -> ReaderSettingsResponse:
-    settings = get_reader_settings(db)
+def fetch_reader_settings(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> ReaderSettingsResponse:
+    settings = get_reader_settings(db, current_user)
     return ReaderSettingsResponse(settings=settings)
 
 
@@ -29,8 +34,9 @@ def fetch_reader_settings(db: Session = Depends(get_db)) -> ReaderSettingsRespon
 def put_reader_settings(
     payload: ReaderSettingsUpdate,
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ) -> ReaderSettingsResponse:
-    settings = update_reader_settings(db, payload.settings)
+    settings = update_reader_settings(db, current_user, payload.settings)
     return ReaderSettingsResponse(settings=settings)
 
 
@@ -38,13 +44,14 @@ def put_reader_settings(
 def fetch_reading_progress(
     novel_id: str,
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ) -> ReadingProgressResponse:
     try:
         get_novel_or_404(db, novel_id)
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
 
-    progress = get_reading_progress(db, novel_id)
+    progress = get_reading_progress(db, current_user, novel_id)
     return ReadingProgressResponse(progress=progress)
 
 
@@ -53,6 +60,7 @@ def put_reading_progress(
     novel_id: str,
     payload: ReadingProgressUpdate,
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ) -> ReadingProgressResponse:
     try:
         get_novel_or_404(db, novel_id)
@@ -60,7 +68,7 @@ def put_reading_progress(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
 
     try:
-        progress = update_reading_progress(db, novel_id, payload)
+        progress = update_reading_progress(db, current_user, novel_id, payload)
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
 

@@ -11,7 +11,12 @@ from backend.db.base import Base
 class ReaderSettings(Base):
     __tablename__ = "reader_settings"
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, default=1)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"),
+        unique=True,
+        index=True,
+    )
     theme: Mapped[str] = mapped_column(String(20), default="day")
     font_size: Mapped[int] = mapped_column(Integer, default=19)
     line_height: Mapped[float] = mapped_column(default=1.9)
@@ -28,14 +33,20 @@ class ReaderSettings(Base):
         onupdate=func.now(),
     )
 
+    user = relationship("User", back_populates="reader_settings")
+
 
 class ReadingProgress(Base):
     __tablename__ = "reading_progress"
     __table_args__ = (
-        UniqueConstraint("novel_id", name="uq_progress_novel"),
+        UniqueConstraint("user_id", "novel_id", name="uq_progress_user_novel"),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"),
+        index=True,
+    )
     novel_id: Mapped[str] = mapped_column(
         ForeignKey("novels.id", ondelete="CASCADE"),
         index=True,
@@ -60,5 +71,6 @@ class ReadingProgress(Base):
         onupdate=func.now(),
     )
 
+    user = relationship("User", back_populates="reading_progress_entries")
     novel = relationship("Novel", back_populates="progress")
     chapter = relationship("Chapter", back_populates="progress_entries")

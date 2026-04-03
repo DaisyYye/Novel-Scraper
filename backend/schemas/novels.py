@@ -1,5 +1,7 @@
 from datetime import datetime
 
+from pydantic import Field
+
 from backend.schemas.common import APIModel
 
 
@@ -82,3 +84,24 @@ class ChapterNavigation(APIModel):
 class ChapterResponse(APIModel):
     chapter: ChapterDetail
     navigation: ChapterNavigation
+
+
+class ChapterCreate(APIModel):
+    chapter_number: int = Field(ge=1)
+    title: str
+    content: str
+    source_url: str | None = None
+
+
+class ChapterCreateRequest(APIModel):
+    chapter: ChapterCreate
+
+
+class ChapterUpdate(APIModel):
+    title: str
+    content: str
+    source_url: str | None = None
+
+
+class ChapterUpdateRequest(APIModel):
+    chapter: ChapterUpdate

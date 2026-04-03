@@ -14,6 +14,15 @@ export function useLocalStorageState<T>(
   });
 
   useEffect(() => {
+    if (typeof initialValue === "function") {
+      setState(readStorage(key, (initialValue as () => T)()));
+      return;
+    }
+
+    setState(readStorage(key, initialValue));
+  }, [initialValue, key]);
+
+  useEffect(() => {
     writeStorage(key, state);
   }, [key, state]);
 

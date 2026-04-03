@@ -1,8 +1,9 @@
 from datetime import datetime, timezone
 
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from backend.models import Chapter, ReaderSettings, ReadingProgress
+from backend.models import Chapter, ReaderSettings, ReadingProgress, User
 from backend.schemas.reader import (
     ReaderSettingsData,
     ReadingProgressData,
@@ -10,10 +11,10 @@ from backend.schemas.reader import (
 )
 
 
-def get_reader_settings(db: Session) -> ReaderSettingsData:
-    settings = db.get(ReaderSettings, 1)
+def get_reader_settings(db: Session, user: User) -> ReaderSettingsData:
+    settings = db.scalar(select(ReaderSettings).where(ReaderSettings.user_id == user.id))
     if not settings:
-        settings = ReaderSettings(id=1)
+        settings = ReaderSettings(user_id=user.id)
         db.add(settings)
         db.commit()
         db.refresh(settings)
@@ -21,10 +22,10 @@ def get_reader_settings(db: Session) -> ReaderSettingsData:
     return ReaderSettingsData.model_validate(settings)
 
 
-def update_reader_settings(db: Session, payload: ReaderSettingsData) -> ReaderSettingsData:
-    settings = db.get(ReaderSettings, 1)
+def update_reader_settings(db: Session, user: User, payload: ReaderSettingsData) -> ReaderSettingsData:
+    settings = db.scalar(select(ReaderSettings).where(ReaderSettings.user_id == user.id))
     if not settings:
-        settings = ReaderSettings(id=1)
+        settings = ReaderSettings(user_id=user.id)
         db.add(settings)
 
     settings.theme = payload.theme
@@ -39,10 +40,10 @@ def update_reader_settings(db: Session, payload: ReaderSettingsData) -> ReaderSe
     return ReaderSettingsData.model_validate(settings)
 
 
-def get_reading_progress(db: Session, novel_id: str) -> ReadingProgressData | None:
+def get_reading_progress(db: Session, user: User, novel_id: str) -> ReadingProgressData | None:
     progress = (
         db.query(ReadingProgress)
-        .filter(ReadingProgress.novel_id == novel_id)
+        .filter(ReadingProgress.user_id == user.id, ReadingProgress.novel_id == novel_id)
         .one_or_none()
     )
 
@@ -54,6 +55,7 @@ def get_reading_progress(db: Session, novel_id: str) -> ReadingProgressData | No
 
 def update_reading_progress(
     db: Session,
+    user: User,
     novel_id: str,
     payload: ReadingProgressUpdate,
 ) -> ReadingProgressData:
@@ -64,12 +66,12 @@ def update_reading_progress(
 
     progress = (
         db.query(ReadingProgress)
-        .filter(ReadingProgress.novel_id == novel_id)
+        .filter(ReadingProgress.user_id == user.id, ReadingProgress.novel_id == novel_id)
         .one_or_none()
     )
 
     if not progress:
-        progress = ReadingProgress(novel_id=novel_id)
+        progress = ReadingProgress(user_id=user.id, novel_id=novel_id)
         db.add(progress)
 
     progress.chapter_id = payload.chapter_id

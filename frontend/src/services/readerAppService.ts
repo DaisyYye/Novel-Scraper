@@ -1,3 +1,4 @@
+import { getAuthToken } from "../lib/authToken";
 import type {
   CreateNovelInput,
   ImportNovelInput,
@@ -5,6 +6,7 @@ import type {
   ReaderAppService,
   UpdateNovelInput,
 } from "../types/contracts";
+import type { AppUser } from "../types/auth";
 import type {
   ChapterContent,
   ChapterSummary,
@@ -18,6 +20,19 @@ const API_BASE_URL = ((import.meta.env.VITE_API_BASE_URL as string | undefined) 
   /\/$/,
   "",
 );
+
+type BackendCurrentUser = {
+  id: number;
+  clerk_user_id: string;
+  email: string;
+  role: "admin" | "reader";
+  created_at: string;
+  updated_at: string;
+};
+
+type BackendCurrentUserResponse = {
+  user: BackendCurrentUser;
+};
 
 type BackendNovelSummary = {
   id: string;
@@ -99,17 +114,32 @@ type BackendImportResponse = {
 };
 
 async function apiRequest<T>(path: string, init?: RequestInit): Promise<T> {
+  const token = await getAuthToken();
+  const headers = new Headers(init?.headers ?? {});
+  headers.set("Content-Type", "application/json");
+  if (token) {
+    headers.set("Authorization", `Bearer ${token}`);
+  }
+
   const response = await fetch(`${API_BASE_URL}${path}`, {
-    headers: {
-      "Content-Type": "application/json",
-      ...(init?.headers ?? {}),
-    },
     ...init,
+    headers,
   });
 
   if (!response.ok) {
-    const message = await response.text();
-    throw new Error(message || `Request failed: ${response.status}`);
+    let message = `Request failed: ${response.status}`;
+    const text = await response.text();
+
+    if (text) {
+      try {
+        const payload = JSON.parse(text) as { detail?: string };
+        message = payload.detail ?? text;
+      } catch {
+        message = text;
+      }
+    }
+
+    throw new Error(message);
   }
 
   if (response.status === 204) {
@@ -117,6 +147,17 @@ async function apiRequest<T>(path: string, init?: RequestInit): Promise<T> {
   }
 
   return response.json() as Promise<T>;
+}
+
+function mapCurrentUser(user: BackendCurrentUser): AppUser {
+  return {
+    id: user.id,
+    clerkUserId: user.clerk_user_id,
+    email: user.email,
+    role: user.role,
+    createdAt: user.created_at,
+    updatedAt: user.updated_at,
+  };
 }
 
 function mapNovelSummary(novel: BackendNovelSummary): NovelSummary {
@@ -226,6 +267,11 @@ function buildCreateNovelImport(input: CreateNovelInput): ImportNovelInput {
 
 function createApiReaderAppService(): ReaderAppService {
   return {
+    async getCurrentUser() {
+      const response = await apiRequest<BackendCurrentUserResponse>("/auth/me");
+      return mapCurrentUser(response.user);
+    },
+
     async getNovels() {
       const response = await apiRequest<BackendNovelListResponse>("/novels");
       return response.items.map(mapNovelSummary);
@@ -351,6 +397,23 @@ function createApiReaderAppService(): ReaderAppService {
         importedChapterCount: response.imported_chapter_count,
       } satisfies ImportNovelResult;
     },
+
+    async importNovelFile(filePath) {
+      const response = await apiRequest<BackendImportResponse>("/novels/import", {
+        method: "POST",
+        body: JSON.stringify({
+          file_path: filePath,
+        }),
+      });
+
+      return {
+        novel: {
+          novel: mapNovelSummary(response.novel),
+          chapters: [],
+        },
+        importedChapterCount: response.imported_chapter_count,
+      } satisfies ImportNovelResult;
+    },
   };
 }
 
@@ -358,6 +421,10 @@ export const readerAppService = createApiReaderAppService();
 
 export async function getNovels() {
   return readerAppService.getNovels();
+}
+
+export async function getCurrentUser() {
+  return readerAppService.getCurrentUser();
 }
 
 export async function getNovelById(novelId: string) {
@@ -406,4 +473,8 @@ export async function createNovel(input: CreateNovelInput) {
 
 export async function importNovel(input: ImportNovelInput) {
   return readerAppService.importNovel(input);
+}
+
+export async function importNovelFile(filePath: string) {
+  return readerAppService.importNovelFile(filePath);
 }

@@ -3,14 +3,17 @@ from sqlalchemy.orm import Session
 
 from backend.models import Chapter, Novel
 from backend.schemas.novels import (
+    ChapterCreate,
     ChapterDetail,
     ChapterNavigation,
     ChapterSummary,
+    ChapterUpdate,
     NovelDetail,
     NovelSummary,
     NovelUpdate,
 )
 from backend.services.utils import loads_tags
+from backend.services.utils import build_chapter_id
 
 
 def serialize_novel_summary(novel: Novel) -> NovelSummary:
@@ -125,6 +128,66 @@ def list_chapters_for_novel(db: Session, novel_id: str) -> list[ChapterSummary]:
     )
     chapters = list(db.scalars(statement))
     return [serialize_chapter_summary(chapter) for chapter in chapters]
+
+
+def create_chapter_or_404(
+    db: Session,
+    novel_id: str,
+    payload: ChapterCreate,
+) -> ChapterDetail:
+    novel = get_novel_or_404(db, novel_id)
+    existing = db.scalar(
+        select(Chapter).where(
+            Chapter.novel_id == novel_id,
+            Chapter.chapter_number == payload.chapter_number,
+        )
+    )
+    if existing:
+        raise ValueError("A chapter with this number already exists.")
+
+    chapter = Chapter(
+        id=build_chapter_id(novel_id, payload.chapter_number),
+        novel_id=novel_id,
+        chapter_number=payload.chapter_number,
+        title=payload.title.strip(),
+        content=payload.content,
+        source_url=payload.source_url,
+        word_count=len(payload.content.split()),
+    )
+    db.add(chapter)
+    db.flush()
+    novel.chapter_count = db.query(Chapter).filter(Chapter.novel_id == novel_id).count()
+    db.add(novel)
+    db.commit()
+    db.refresh(chapter)
+    return serialize_chapter_detail(chapter)
+
+
+def update_chapter_or_404(
+    db: Session,
+    novel_id: str,
+    chapter_id: str,
+    payload: ChapterUpdate,
+) -> ChapterDetail:
+    chapter = get_chapter_or_404(db, novel_id, chapter_id)
+    chapter.title = payload.title.strip()
+    chapter.content = payload.content
+    chapter.source_url = payload.source_url
+    chapter.word_count = len(payload.content.split())
+    db.add(chapter)
+    db.commit()
+    db.refresh(chapter)
+    return serialize_chapter_detail(chapter)
+
+
+def delete_chapter_or_404(db: Session, novel_id: str, chapter_id: str) -> None:
+    chapter = get_chapter_or_404(db, novel_id, chapter_id)
+    novel = get_novel_or_404(db, novel_id)
+    db.delete(chapter)
+    db.flush()
+    novel.chapter_count = db.query(Chapter).filter(Chapter.novel_id == novel_id).count()
+    db.add(novel)
+    db.commit()
 
 
 def get_chapter_navigation(

@@ -1,3 +1,4 @@
+import type { AppUser } from "./auth";
 import type {
   ChapterContent,
   ChapterSummary,
@@ -52,6 +53,7 @@ export type ImportNovelResult = {
 };
 
 export type ReaderAppService = {
+  getCurrentUser(): Promise<AppUser>;
   getNovels(): Promise<NovelSummary[]>;
   deleteNovel(novelId: string): Promise<void>;
   updateNovel(novelId: string, input: UpdateNovelInput): Promise<NovelSummary>;
@@ -68,4 +70,5 @@ export type ReaderAppService = {
   searchNovels(query: string): Promise<NovelSearchResult[]>;
   createNovel(input: CreateNovelInput): Promise<NovelDetail>;
   importNovel(input: ImportNovelInput): Promise<ImportNovelResult>;
+  importNovelFile(filePath: string): Promise<ImportNovelResult>;
 };

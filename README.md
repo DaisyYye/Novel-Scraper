@@ -95,6 +95,46 @@ curl -X POST http://127.0.0.1:8000/novels/import ^
   -d "{\"file_path\":\"data/raw/sample_novel.json\"}"
 ```
 
+## Clerk authentication setup
+
+Authentication is handled by Clerk on the frontend, while the FastAPI backend remains the source
+of truth for app roles and per-user data.
+
+1. Create a Clerk application.
+2. Copy `.env.example` to a local env file and fill in the Clerk keys and domain values.
+3. Set `ADMIN_EMAIL` to the one account that should receive the `admin` role.
+4. Install dependencies:
+
+```bash
+pip install -r requirements.txt
+cd frontend
+npm install
+cd ..
+```
+
+5. Initialize the database:
+
+```bash
+python -m backend.scripts.init_database
+```
+
+6. Run the backend:
+
+```bash
+uvicorn backend.main:app --reload
+```
+
+7. Run the frontend:
+
+```bash
+cd frontend
+npm run dev
+```
+
+On first authenticated request, the backend verifies the Clerk session token, looks up the Clerk
+user, creates an internal `users` row if needed, and assigns `admin` only when the email matches
+`ADMIN_EMAIL`. All other users are stored as `reader`.
+
 ## Config fields
 
 - `start_url`: first chapter URL

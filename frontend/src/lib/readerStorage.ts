@@ -29,8 +29,8 @@ function clampNumber(value: unknown, fallback: number, min: number, max: number)
   return Math.min(Math.max(value, min), max);
 }
 
-export function readReaderSettings(): ReaderSettings {
-  const raw = readStorage<unknown>(storageKeys.readerSettings, defaultReaderSettings);
+export function readReaderSettings(key: string = storageKeys.readerSettings): ReaderSettings {
+  const raw = readStorage<unknown>(key, defaultReaderSettings);
 
   if (!isObject(raw)) {
     return defaultReaderSettings;
@@ -61,8 +61,8 @@ export function writeReaderSettings(settings: ReaderSettings) {
   writeStorage(storageKeys.readerSettings, settings);
 }
 
-export function readReadingProgressMap(): ReadingProgressMap {
-  const raw = readStorage<unknown>(storageKeys.readingProgress, {});
+export function readReadingProgressMap(key: string = storageKeys.readingProgress): ReadingProgressMap {
+  const raw = readStorage<unknown>(key, {});
   if (!isObject(raw)) {
     return {};
   }
@@ -94,17 +94,23 @@ export function readReadingProgressMap(): ReadingProgressMap {
   return normalized;
 }
 
-export function writeReadingProgressMap(progressMap: ReadingProgressMap) {
-  writeStorage(storageKeys.readingProgress, progressMap);
+export function writeReadingProgressMap(
+  progressMap: ReadingProgressMap,
+  key: string = storageKeys.readingProgress,
+) {
+  writeStorage(key, progressMap);
 }
 
-export function clearReadingProgress(novelId?: string) {
+export function clearReadingProgress(
+  novelId?: string,
+  key: string = storageKeys.readingProgress,
+) {
   if (!novelId) {
-    removeStorage(storageKeys.readingProgress);
+    removeStorage(key);
     return;
   }
 
-  const progressMap = readReadingProgressMap();
+  const progressMap = readReadingProgressMap(key);
   delete progressMap[novelId];
-  writeReadingProgressMap(progressMap);
+  writeReadingProgressMap(progressMap, key);
 }

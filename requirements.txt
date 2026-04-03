@@ -5,3 +5,5 @@ fastapi
 uvicorn[standard]
 sqlalchemy
 pydantic
+PyJWT
+cryptography

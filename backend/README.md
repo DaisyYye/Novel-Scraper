@@ -26,6 +26,29 @@ python -m backend.scripts.seed_sample_data
 uvicorn backend.main:app --reload
 ```
 
+## Authentication
+
+The backend expects Clerk session tokens on authenticated requests and keeps its own `users` table
+for roles and ownership.
+
+Required environment variables:
+
+```bash
+ADMIN_EMAIL=owner@example.com
+CLERK_SECRET_KEY=sk_test_...
+CLERK_ISSUER=https://your-clerk-domain.clerk.accounts.dev
+CLERK_JWKS_URL=https://your-clerk-domain.clerk.accounts.dev/.well-known/jwks.json
+CLERK_AUDIENCE=
+ALLOWED_ORIGINS=http://localhost:5173,http://127.0.0.1:5173
+```
+
+Behavior:
+
+- every `/novels`, `/reader-settings`, and `/progress/*` endpoint now requires a valid Clerk token
+- `POST /novels/import`, `PUT/DELETE /novels/{id}`, and chapter write routes require `admin`
+- a local `users` row is created or refreshed on first login
+- `ADMIN_EMAIL` is the bootstrap path for the admin role
+
 ## Run frontend + backend together
 
 From the repo root:

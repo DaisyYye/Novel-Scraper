@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
+import { useAppAuth } from "../auth/AuthContext";
 import { PageSection } from "../components/shared/PageSection";
 import { ProgressSummary } from "../components/shared/ProgressSummary";
 import { useNovelDetailData } from "../hooks/useNovelDetailData";
@@ -13,6 +14,7 @@ type EditFormState = {
 
 export function NovelDetailPage() {
   const { novelId = "" } = useParams();
+  const { isAdmin } = useAppAuth();
   const [refreshKey, setRefreshKey] = useState(0);
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -107,7 +109,7 @@ export function NovelDetailPage() {
                 {progress ? `Continue chapter ${progress.chapterIndex}` : "Start reading"}
               </Link>
             ) : null}
-            {isEditing ? (
+            {isAdmin && isEditing ? (
               <>
                 <button
                   type="button"
@@ -125,7 +127,7 @@ export function NovelDetailPage() {
                   {isSaving ? "Saving..." : "Save changes"}
                 </button>
               </>
-            ) : (
+            ) : isAdmin ? (
               <button
                 type="button"
                 onClick={() => {
@@ -136,13 +138,13 @@ export function NovelDetailPage() {
               >
                 Edit details
               </button>
-            )}
+            ) : null}
           </div>
         }
       >
         <div className="grid gap-8 lg:grid-cols-[1.2fr_0.8fr]">
           <section className="rounded-[30px] border border-black/5 bg-white/85 p-6 shadow-panel">
-            {isEditing ? (
+            {isAdmin && isEditing ? (
               <div className="mb-8 space-y-5 rounded-[24px] border border-black/5 bg-ink-50/70 p-5">
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-ink-700" htmlFor="novel-title">
