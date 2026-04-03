@@ -47,6 +47,27 @@ export type ImportNovelInput = {
   }>;
 };
 
+export type ImportNovelDocumentInput = {
+  id?: string;
+  slug?: string;
+  title: string;
+  author?: string;
+  description?: string;
+  source_site?: string;
+  source_url?: string;
+  status?: "ongoing" | "completed" | "hiatus";
+  cover_url?: string | null;
+  tags?: string[];
+  chapters: Array<{
+    id?: string;
+    chapter_number: number;
+    title: string;
+    content: string;
+    word_count?: number | null;
+    source_url?: string;
+  }>;
+};
+
 export type ImportNovelResult = {
   novel: NovelDetail;
   importedChapterCount: number;
@@ -70,5 +91,6 @@ export type ReaderAppService = {
   searchNovels(query: string): Promise<NovelSearchResult[]>;
   createNovel(input: CreateNovelInput): Promise<NovelDetail>;
   importNovel(input: ImportNovelInput): Promise<ImportNovelResult>;
+  importNovelDocument(input: ImportNovelDocumentInput): Promise<ImportNovelResult>;
   importNovelFile(filePath: string): Promise<ImportNovelResult>;
 };

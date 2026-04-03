@@ -1,6 +1,7 @@
 import { getAuthToken } from "../lib/authToken";
 import type {
   CreateNovelInput,
+  ImportNovelDocumentInput,
   ImportNovelInput,
   ImportNovelResult,
   ReaderAppService,
@@ -398,6 +399,21 @@ function createApiReaderAppService(): ReaderAppService {
       } satisfies ImportNovelResult;
     },
 
+    async importNovelDocument(input) {
+      const response = await apiRequest<BackendImportResponse>("/novels/import", {
+        method: "POST",
+        body: JSON.stringify(input),
+      });
+
+      return {
+        novel: {
+          novel: mapNovelSummary(response.novel),
+          chapters: [],
+        },
+        importedChapterCount: response.imported_chapter_count,
+      } satisfies ImportNovelResult;
+    },
+
     async importNovelFile(filePath) {
       const response = await apiRequest<BackendImportResponse>("/novels/import", {
         method: "POST",
@@ -473,6 +489,10 @@ export async function createNovel(input: CreateNovelInput) {
 
 export async function importNovel(input: ImportNovelInput) {
   return readerAppService.importNovel(input);
+}
+
+export async function importNovelDocument(input: ImportNovelDocumentInput) {
+  return readerAppService.importNovelDocument(input);
 }
 
 export async function importNovelFile(filePath: string) {
