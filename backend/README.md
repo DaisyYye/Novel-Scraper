@@ -35,6 +35,7 @@ Required environment variables:
 
 ```bash
 DATABASE_URL=
+ALLOW_SQLITE_FALLBACK=false
 ADMIN_EMAIL=owner@example.com
 CLERK_SECRET_KEY=sk_test_...
 CLERK_ISSUER=https://your-clerk-domain.clerk.accounts.dev
@@ -59,6 +60,7 @@ Recommended variables:
 
 ```bash
 DATABASE_URL=${{Postgres.DATABASE_URL}}
+ALLOW_SQLITE_FALLBACK=false
 ADMIN_EMAIL=owner@example.com
 ALLOWED_ORIGINS=https://your-frontend-domain
 CLERK_SECRET_KEY=sk_live_...
@@ -71,9 +73,12 @@ Notes:
 
 - `DATABASE_URL` is optional for local development. If omitted, the app falls back to
   `backend/data/novel_reader.db`.
-- On Railway, prefer adding a Postgres service and wiring its `DATABASE_URL` into the backend.
+- On Railway, `DATABASE_URL` is required by default so deploys fail fast instead of silently
+  writing imported novels into ephemeral SQLite storage.
 - If you stay on SQLite in production, the filesystem is not durable across redeploys unless you add
   a persistent volume.
+- `ALLOW_SQLITE_FALLBACK=true` is an escape hatch if you intentionally want ephemeral SQLite on
+  Railway for a temporary environment.
 
 Behavior:
 

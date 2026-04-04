@@ -146,6 +146,7 @@ For this repo, Railway should build from the repo root, not `/backend`.
 Set these Railway variables for the backend service:
 
 - `DATABASE_URL`: use Railway Postgres if available
+- `ALLOW_SQLITE_FALLBACK=false`
 - `ADMIN_EMAIL`
 - `ALLOWED_ORIGINS`: your deployed frontend URL
 - `CLERK_SECRET_KEY`
@@ -153,8 +154,10 @@ Set these Railway variables for the backend service:
 - `CLERK_JWKS_URL`
 - `CLERK_AUDIENCE`: optional
 
-If you do not set `DATABASE_URL`, the app uses SQLite at `backend/data/novel_reader.db`, which is
-fine locally but not ideal for Railway unless you attach persistent storage.
+If you do not set `DATABASE_URL`, the app uses SQLite at `backend/data/novel_reader.db`. That is
+fine locally, but Railway now refuses that fallback by default so imported novels are not written
+into ephemeral container storage by accident. Set `ALLOW_SQLITE_FALLBACK=true` only if you
+intentionally want non-persistent SQLite on Railway.
 
 ## Config fields
 
