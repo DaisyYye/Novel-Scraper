@@ -58,6 +58,112 @@ body {
   min-height: 44px;
 }
 
+.reader-range {
+  appearance: none;
+  height: 6px;
+  border-radius: 999px;
+  background: linear-gradient(
+    90deg,
+    #f0c24f 0%,
+    #efc045 var(--reader-range-progress),
+    rgba(102, 86, 56, 0.7) var(--reader-range-progress),
+    rgba(102, 86, 56, 0.7) 100%
+  );
+}
+
+.reader-range::-webkit-slider-thumb {
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border: 2px solid #f1c24f;
+  border-radius: 999px;
+  background: #fff8ea;
+  box-shadow: 0 4px 10px rgba(123, 96, 46, 0.18);
+  cursor: pointer;
+}
+
+.reader-range::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border: 2px solid #f1c24f;
+  border-radius: 999px;
+  background: #fff8ea;
+  box-shadow: 0 4px 10px rgba(123, 96, 46, 0.18);
+  cursor: pointer;
+}
+
+.reader-range::-moz-range-track {
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(102, 86, 56, 0.7);
+}
+
+.reader-range-day {
+  background: linear-gradient(
+    90deg,
+    #e2b13d 0%,
+    #e2b13d var(--reader-range-progress),
+    rgba(150, 140, 124, 0.45) var(--reader-range-progress),
+    rgba(150, 140, 124, 0.45) 100%
+  );
+}
+
+.reader-range-day::-webkit-slider-thumb {
+  border-color: #e2b13d;
+  background: #ffffff;
+  box-shadow: 0 4px 10px rgba(87, 74, 52, 0.14);
+}
+
+.reader-range-day::-moz-range-thumb {
+  border-color: #e2b13d;
+  background: #ffffff;
+  box-shadow: 0 4px 10px rgba(87, 74, 52, 0.14);
+}
+
+.reader-range-day::-moz-range-track {
+  background: rgba(150, 140, 124, 0.45);
+}
+
+.reader-range-sepia {
+  background: linear-gradient(
+    90deg,
+    #f0c24f 0%,
+    #efc045 var(--reader-range-progress),
+    rgba(102, 86, 56, 0.7) var(--reader-range-progress),
+    rgba(102, 86, 56, 0.7) 100%
+  );
+}
+
+.reader-range-sepia::-moz-range-track {
+  background: rgba(102, 86, 56, 0.7);
+}
+
+.reader-range-night {
+  background: linear-gradient(
+    90deg,
+    #d8b15d 0%,
+    #d8b15d var(--reader-range-progress),
+    rgba(88, 80, 68, 0.92) var(--reader-range-progress),
+    rgba(88, 80, 68, 0.92) 100%
+  );
+}
+
+.reader-range-night::-webkit-slider-thumb {
+  border-color: #d8b15d;
+  background: #f0e8d8;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.28);
+}
+
+.reader-range-night::-moz-range-thumb {
+  border-color: #d8b15d;
+  background: #f0e8d8;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.28);
+}
+
+.reader-range-night::-moz-range-track {
+  background: rgba(88, 80, 68, 0.92);
+}
+
 @media (max-width: 639px) {
   .reader-prose {
     width: 100%;

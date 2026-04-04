@@ -5,22 +5,21 @@ export function useLocalStorageState<T>(
   key: string,
   initialValue: T | (() => T),
 ) {
-  const [state, setState] = useState<T>(() => {
+  const resolveInitialValue = () => {
     if (typeof initialValue === "function") {
       return (initialValue as () => T)();
     }
 
-    return readStorage(key, initialValue);
+    return initialValue;
+  };
+
+  const [state, setState] = useState<T>(() => {
+    return readStorage(key, resolveInitialValue());
   });
 
   useEffect(() => {
-    if (typeof initialValue === "function") {
-      setState(readStorage(key, (initialValue as () => T)()));
-      return;
-    }
-
-    setState(readStorage(key, initialValue));
-  }, [initialValue, key]);
+    setState(readStorage(key, resolveInitialValue()));
+  }, [key]);
 
   useEffect(() => {
     writeStorage(key, state);

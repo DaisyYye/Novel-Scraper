@@ -1,5 +1,6 @@
 import argparse
 import base64
+import importlib.util
 import json
 import re
 import sys
@@ -14,8 +15,37 @@ if PROJECT_PACKAGES.exists():
     sys.path.append(str(PROJECT_PACKAGES))
 
 import requests
-from bs4 import BeautifulSoup
-from Crypto.Cipher import AES
+
+
+def load_project_package(package_name: str):
+    package_init = PROJECT_PACKAGES / package_name / "__init__.py"
+    if not package_init.exists():
+        raise ImportError(f"Could not find local package for {package_name}")
+
+    spec = importlib.util.spec_from_file_location(
+        package_name,
+        package_init,
+        submodule_search_locations=[str(package_init.parent)],
+    )
+    if spec is None or spec.loader is None:
+        raise ImportError(f"Could not load package spec for {package_name}")
+
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[package_name] = module
+    spec.loader.exec_module(module)
+    return module
+
+
+try:
+    from bs4 import BeautifulSoup
+except ImportError:
+    BeautifulSoup = load_project_package("bs4").BeautifulSoup
+
+try:
+    from Crypto.Cipher import AES
+except ImportError:
+    load_project_package("Crypto")
+    from Crypto.Cipher import AES
 
 DEFAULT_HEADERS = {
     "User-Agent": (
@@ -110,13 +140,13 @@ def request_with_retries(
 
 def fetch_soup(session: requests.Session, url: str) -> BeautifulSoup:
     response = request_with_retries(session, url)
-    response.encoding = response.apparent_encoding or response.encoding
+    response.encoding = response.encoding or response.apparent_encoding or "utf-8"
     return BeautifulSoup(response.text, "html.parser")
 
 
 def fetch_text(session: requests.Session, url: str) -> str:
     response = request_with_retries(session, url)
-    response.encoding = response.apparent_encoding or response.encoding
+    response.encoding = response.encoding or response.apparent_encoding or "utf-8"
     return response.text
 
 
@@ -166,15 +196,28 @@ def build_soup(session: requests.Session, url: str) -> BeautifulSoup:
     html = fetch_text(session, url)
     soup = BeautifulSoup(html, "html.parser")
 
-    if "lenglengbb.com" in urlparse(url).netloc:
+    encrypted_domains = {
+        "lenglengbb.com",
+        "www.lenglengbb.com",
+        "shibashuwu.net",
+        "www.shibashuwu.net",
+    }
+    if urlparse(url).netloc in encrypted_domains:
         decrypted_html = decrypt_lenglengbb_html(html)
         if decrypted_html:
-            content_node = soup.select_one(".RBGsectionThree-content")
-            if content_node:
+            content_selectors = [
+                ".RBGsectionThree-content",
+                "#C0NTENT",
+            ]
+            for selector in content_selectors:
+                content_node = soup.select_one(selector)
+                if not content_node:
+                    continue
                 content_node.clear()
                 decrypted_soup = BeautifulSoup(decrypted_html, "html.parser")
                 for child in list(decrypted_soup.contents):
                     content_node.append(child)
+                break
 
     return soup
 
@@ -313,41 +356,54 @@ def collect_chapter_urls(session: requests.Session, config: dict, start_url_over
     if not chapter_list_url or not chapter_link_selector:
         return [config["start_url"]]
 
-    soup = fetch_soup(session, chapter_list_url)
     entries = []
     seen = set()
+    seen_catalog_pages = set()
     chapter_sort_attr = config.get("chapter_sort_attr")
+    current_list_url = chapter_list_url
+    chapter_list_next_selector = config.get("chapter_list_next_selector")
 
-    for node in soup.select(chapter_link_selector):
-        href = node.get("href")
-        data_href_attr = config.get("chapter_link_data_attr")
-        if data_href_attr and node.get(data_href_attr):
+    while current_list_url and current_list_url not in seen_catalog_pages:
+        seen_catalog_pages.add(current_list_url)
+        soup = fetch_soup(session, current_list_url)
+
+        for node in soup.select(chapter_link_selector):
+            href = node.get("href")
+            data_href_attr = config.get("chapter_link_data_attr")
+            if data_href_attr and node.get(data_href_attr):
+                try:
+                    href = base64.b64decode(node[data_href_attr]).decode("utf-8")
+                except Exception:
+                    href = node.get("href")
+            if not href:
+                continue
+            chapter_url = urljoin(current_list_url, href)
+            if chapter_url in seen:
+                continue
+            seen.add(chapter_url)
+
+            sort_value = None
+            if chapter_sort_attr:
+                current = node
+                while current is not None:
+                    if getattr(current, "attrs", None) and current.get(chapter_sort_attr) is not None:
+                        sort_value = current.get(chapter_sort_attr)
+                        break
+                    current = getattr(current, "parent", None)
+
             try:
-                href = base64.b64decode(node[data_href_attr]).decode("utf-8")
-            except Exception:
-                href = node.get("href")
-        if not href:
-            continue
-        chapter_url = urljoin(chapter_list_url, href)
-        if chapter_url in seen:
-            continue
-        seen.add(chapter_url)
+                sort_key = int(sort_value) if sort_value is not None else len(entries)
+            except ValueError:
+                sort_key = len(entries)
 
-        sort_value = None
-        if chapter_sort_attr:
-            current = node
-            while current is not None:
-                if getattr(current, "attrs", None) and current.get(chapter_sort_attr) is not None:
-                    sort_value = current.get(chapter_sort_attr)
-                    break
-                current = getattr(current, "parent", None)
+            entries.append((sort_key, chapter_url))
 
-        try:
-            sort_key = int(sort_value) if sort_value is not None else len(entries)
-        except ValueError:
-            sort_key = len(entries)
+        if not chapter_list_next_selector:
+            break
 
-        entries.append((sort_key, chapter_url))
+        next_node = soup.select_one(chapter_list_next_selector)
+        next_href = next_node.get("href") if next_node else None
+        current_list_url = urljoin(current_list_url, next_href) if next_href else None
 
     entries.sort(key=lambda item: item[0])
     urls = [chapter_url for _, chapter_url in entries]

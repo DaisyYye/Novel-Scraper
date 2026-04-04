@@ -15,6 +15,12 @@ export const defaultReaderSettings: ReaderSettings = {
   paragraphSpacing: 1.35,
 };
 
+export const readerWidthPresets = [
+  { label: "Small", value: 640 },
+  { label: "Medium", value: 760 },
+  { label: "Large", value: 880 },
+] as const;
+
 export type ReadingProgressMap = Record<string, ReadingProgress>;
 
 function isObject(value: unknown): value is Record<string, unknown> {
@@ -27,6 +33,17 @@ function clampNumber(value: unknown, fallback: number, min: number, max: number)
   }
 
   return Math.min(Math.max(value, min), max);
+}
+
+export function normalizeContentWidth(value: unknown) {
+  const clampedValue = clampNumber(value, defaultReaderSettings.contentWidth, 560, 920);
+  const presetValues = readerWidthPresets.map((preset) => preset.value);
+
+  return presetValues.reduce((closest, presetValue) => {
+    const closestDistance = Math.abs(closest - clampedValue);
+    const presetDistance = Math.abs(presetValue - clampedValue);
+    return presetDistance < closestDistance ? presetValue : closest;
+  }, presetValues[0]);
 }
 
 export function readReaderSettings(key: string = storageKeys.readerSettings): ReaderSettings {
@@ -43,7 +60,7 @@ export function readReaderSettings(key: string = storageKeys.readerSettings): Re
         : defaultReaderSettings.theme,
     fontSize: clampNumber(raw.fontSize, defaultReaderSettings.fontSize, 15, 28),
     lineHeight: clampNumber(raw.lineHeight, defaultReaderSettings.lineHeight, 1.4, 2.3),
-    contentWidth: clampNumber(raw.contentWidth, defaultReaderSettings.contentWidth, 560, 920),
+    contentWidth: normalizeContentWidth(raw.contentWidth),
     fontFamily:
       raw.fontFamily === "literary" || raw.fontFamily === "serif" || raw.fontFamily === "sans"
         ? raw.fontFamily

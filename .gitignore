@@ -31,3 +31,4 @@ data/exports/
 output/*.txt
 output/*.json
 output/*/chapters/
+configs/*.json

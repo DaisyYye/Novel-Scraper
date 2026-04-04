@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { CSSProperties } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { ReaderControls } from "../components/reader/ReaderControls";
 import { useReaderData } from "../hooks/useReaderData";
+import { defaultReaderSettings } from "../lib/readerStorage";
 
 function getThemeTokens(theme: "day" | "night" | "sepia") {
   if (theme === "night") {
@@ -11,6 +12,8 @@ function getThemeTokens(theme: "day" | "night" | "sepia") {
       fg: "#f0e8d8",
       muted: "#b7ab98",
       panel: "bg-[#221d19]/90 border-white/10",
+      topBar: "border-white/10 bg-[#1f1a16]/92 text-[#f0e8d8]",
+      titleAccent: "#d8c8a8",
     };
   }
 
@@ -20,6 +23,8 @@ function getThemeTokens(theme: "day" | "night" | "sepia") {
       fg: "#43382d",
       muted: "#7e6e5d",
       panel: "bg-white/60 border-black/10",
+      topBar: "border-[#decfb8] bg-[#f4ead8]/95 text-[#43382d]",
+      titleAccent: "#b79c6c",
     };
   }
 
@@ -28,6 +33,8 @@ function getThemeTokens(theme: "day" | "night" | "sepia") {
     fg: "#221d19",
     muted: "#6f6250",
     panel: "bg-white/72 border-black/10",
+    topBar: "border-[#ddd4c5] bg-[#f4efe4]/96 text-[#221d19]",
+    titleAccent: "#b79c6c",
   };
 }
 
@@ -42,6 +49,7 @@ export function ReaderPage() {
   const [showMobileControls, setShowMobileControls] = useState(false);
   const restoredChapterIdRef = useRef<string | null>(null);
   const { novelId = "", chapterId = "" } = useParams();
+  const navigate = useNavigate();
   const {
     detail,
     chapter,
@@ -144,44 +152,80 @@ export function ReaderPage() {
         {
           "--reader-bg": themeTokens.bg,
           "--reader-fg": themeTokens.fg,
-          "--reader-content-width": `${settings.contentWidth}px`,
+          "--reader-content-width": `${defaultReaderSettings.contentWidth}px`,
           "--reader-font-size": `${settings.fontSize}px`,
           "--reader-line-height": String(settings.lineHeight),
-          "--reader-font-family": getFontFamily(settings.fontFamily),
+          "--reader-font-family": getFontFamily(defaultReaderSettings.fontFamily),
           "--reader-paragraph-spacing": `${settings.paragraphSpacing}rem`,
         } as CSSProperties
       }
     >
-      <div className="mx-auto grid min-h-screen max-w-7xl gap-6 px-4 py-4 lg:grid-cols-[1fr_320px] lg:px-6">
-        <section className="order-2 min-w-0 lg:order-1">
-          <header
-            className={`reader-header top-2 z-20 flex items-center justify-between gap-3 rounded-[24px] border px-4 py-3 ${themeTokens.panel}`}
-          >
-            <div className="min-w-0">
-              <Link to={`/novels/${novelId}`} className="text-sm" style={{ color: themeTokens.muted }}>
-                Back to novel
-              </Link>
-              <h1 className="truncate font-medium" style={{ color: themeTokens.fg }}>
-                {detail.novel.title}
-              </h1>
+      <div className="mx-auto min-h-screen max-w-7xl px-3 py-3 sm:px-4 lg:px-6">
+        <section className="min-w-0">
+          <div className="top-2 z-30 space-y-3">
+            <header
+              className={`reader-header rounded-[28px] border px-4 py-3 shadow-[0_14px_28px_rgba(77,60,33,0.08)] backdrop-blur ${themeTokens.topBar}`}
+            >
+              <div className="grid items-center gap-3 md:grid-cols-[minmax(0,1fr)_minmax(280px,auto)_minmax(0,1fr)]">
+                <div className="flex items-center justify-start">
+                  <Link
+                    to={`/novels/${novelId}`}
+                    className="inline-flex items-center gap-2 rounded-full px-3 py-2 text-sm transition hover:bg-black/5"
+                    style={{ color: themeTokens.fg }}
+                  >
+                    <span aria-hidden="true">&larr;</span>
+                    <span className="truncate">Back to novel</span>
+                  </Link>
+                </div>
+
+                <div className="min-w-0 text-center">
+                  <h1 className="truncate font-display text-xl leading-tight sm:text-2xl" style={{ color: themeTokens.fg }}>
+                    {detail.novel.title}
+                  </h1>
+                </div>
+
+                <div className="flex items-center justify-end gap-2">
+                  <label className="min-w-0">
+                    <span className="sr-only">Select chapter</span>
+                    <select
+                      value={chapter.id}
+                      onChange={(event) => navigate(`/read/${novelId}/${event.target.value}`)}
+                      className="w-full min-w-[160px] rounded-2xl border border-current/10 bg-white/60 px-4 py-2.5 text-sm outline-none transition focus:border-amber-400 focus:ring-2 focus:ring-amber-300/40"
+                      style={{
+                        color: themeTokens.fg,
+                        backgroundColor: settings.theme === "night" ? "rgba(255,255,255,0.06)" : "rgba(255,255,255,0.7)",
+                      }}
+                    >
+                      {detail.chapters.map((item) => (
+                        <option key={item.id} value={item.id}>
+                          Chapter {item.index}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setShowMobileControls(true)}
+                    className="rounded-full border px-3 py-2 text-sm lg:hidden"
+                    style={{
+                      color: themeTokens.fg,
+                      borderColor: "rgba(128,128,128,0.2)",
+                    }}
+                  >
+                    Settings
+                  </button>
+                </div>
+              </div>
+            </header>
+
+            <div className="hidden lg:block">
+              <ReaderControls
+                settings={settings}
+                setSettings={setSettings}
+                layout="toolbar"
+              />
             </div>
-            <div className="flex items-center gap-2">
-              <p className="shrink-0 text-sm" style={{ color: themeTokens.muted }}>
-                Chapter {chapter.index}
-              </p>
-              <button
-                type="button"
-                onClick={() => setShowMobileControls(true)}
-                className="rounded-full border px-3 py-2 text-sm lg:hidden"
-                style={{
-                  color: themeTokens.fg,
-                  borderColor: "rgba(128,128,128,0.2)",
-                }}
-              >
-                Display
-              </button>
-            </div>
-          </header>
+          </div>
 
           <article className="mx-auto px-1 py-8 sm:px-3 md:px-8 md:py-12">
             <div className="reader-prose mx-auto">
@@ -218,27 +262,23 @@ export function ReaderPage() {
             </div>
           </article>
         </section>
-
-        <div className="order-1 hidden lg:sticky lg:top-4 lg:block lg:h-fit">
-          <ReaderControls settings={settings} setSettings={setSettings} />
-        </div>
       </div>
 
       {showMobileControls ? (
         <div className="fixed inset-0 z-40 bg-black/35 lg:hidden" onClick={() => setShowMobileControls(false)}>
           <div
-            className="absolute inset-x-0 bottom-0 max-h-[82vh] overflow-y-auto rounded-t-[32px] border border-black/10 bg-[#1f1b17] p-4 shadow-2xl"
+            className="absolute inset-x-4 bottom-4 max-h-[68vh] overflow-y-auto rounded-[28px] border border-[#decfb8] bg-[#f4ead8] p-3.5 shadow-2xl"
             onClick={(event) => event.stopPropagation()}
           >
-            <div className="mb-4 flex items-center justify-between gap-3">
+            <div className="mb-3 flex items-center justify-between gap-3">
               <div>
-                <p className="text-xs uppercase tracking-[0.24em] text-ink-400">Reader settings</p>
-                <h2 className="mt-1 font-display text-3xl text-ink-50">Adjust your page</h2>
+                <p className="text-xs uppercase tracking-[0.24em] text-[#8d7450]">Reader settings</p>
+                <h2 className="mt-1 font-display text-2xl text-[#43382d]">Adjust your page</h2>
               </div>
               <button
                 type="button"
                 onClick={() => setShowMobileControls(false)}
-                className="rounded-full border border-white/10 px-3 py-2 text-sm text-ink-100"
+                className="rounded-full border border-[#d9c5a2] px-3 py-2 text-sm text-[#43382d]"
               >
                 Close
               </button>
@@ -246,7 +286,7 @@ export function ReaderPage() {
             <ReaderControls
               settings={settings}
               setSettings={setSettings}
-              className="max-w-none border-white/10 bg-white/5 p-0 md:max-w-none"
+              className="max-w-none border-0 bg-transparent p-0 shadow-none md:max-w-none"
             />
           </div>
         </div>

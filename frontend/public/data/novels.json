@@ -1,26 +1,70 @@
 [
   {
-    "id": "midnight-archive",
-    "slug": "midnight-archive",
-    "title": "The Midnight Archive",
-    "author": "A. Vale",
-    "description": "An archivist in a storm-bent city discovers that forgotten books are quietly rewriting the nights around her.",
-    "coverColor": "#d9c3a6",
-    "status": "ongoing",
-    "chapterCount": 3,
-    "updatedAt": "2026-04-03T19:40:00.000Z",
-    "tags": ["mystery", "slow burn", "literary fantasy"]
-  },
-  {
     "id": "glass-house",
     "slug": "glass-house",
     "title": "The Glass House Letters",
     "author": "M. Rowan",
     "description": "A quiet epistolary romance told through unsent drafts, winter greenhouse notes, and a house full of reflected light.",
-    "coverColor": "#b8d4cf",
+    "source_site": "local-json",
+    "source_url": "https://example.com/novel/glass-house",
     "status": "completed",
-    "chapterCount": 2,
-    "updatedAt": "2026-03-30T09:10:00.000Z",
-    "tags": ["romance", "slice of life", "epistolary"]
+    "cover_url": null,
+    "tags": ["romance", "slice of life", "epistolary"],
+    "chapters": [
+      {
+        "id": "001",
+        "chapter_number": 1,
+        "title": "Chapter 1. Condensation",
+        "content": "The greenhouse was brightest in winter. Mara had always thought that unfair. Summer made flowers of itself without assistance, but winter demanded architecture, panes, angles, and patient hands.\n\nEach morning she unlocked the glass house before sunrise and walked its length with a cloth over one shoulder, wiping condensation from the interior frames. The droplets caught the first gray light and held it long enough to make the room feel inhabited before anyone arrived.\n\nOn the third Monday in January she found an envelope balanced on the bench beside the citrus trays.\n\nIt had no stamp. No address. Only her name, written in a dark blue ink that pressed a little too hard at the downstrokes.\n\nMara,\n\nThe camellia by the south wall has opened three days too early. I thought you would want a witness.\n\nThere was no signature, yet she knew at once who had written it. Only one person in the entire estate treated bloom times like confidences rather than facts.\n\nShe folded the note again, slower than necessary, and looked toward the far corner where winter roses climbed the inner trellis. The glass there was misted white. No figure waited beyond it. Still, the room had the unmistakable feeling of having just been left.",
+        "word_count": 1180,
+        "source_url": "https://example.com/novel/glass-house/chapter-1"
+      },
+      {
+        "id": "002",
+        "chapter_number": 2,
+        "title": "Chapter 2. Drafts Never Sent",
+        "content": "Mara kept the note in the pocket of her apron for five days before answering it. Not because she lacked words. Because some words became smaller the moment they were made visible.\n\nShe chose thick paper from the writing desk in the west room and sat by the greenhouse radiator until the ink loosened in the bottle.\n\nI did see the camellia. It opened like someone deciding, at the last possible moment, to be brave.\n\nToo much, she thought, and crossed out brave.\n\nShe started again.\n\nI saw it. You were right.\n\nThat seemed worse in the opposite direction, all bone and no breath. She folded both drafts, slid them beneath the blotter, and told herself she would wait until morning.\n\nMorning brought another envelope instead.\n\nIt was tucked beneath the handle of the watering can, already damp with greenhouse warmth.\n\nNo reply required, the note inside read. I only wanted to know whether someone else had seen it too.\n\nMara laughed then, softly enough that the sound disappeared into the leaves. She carried the note to the south wall where the camellia held its pale bloom against the glass and, after a long minute, wrote her answer on the back.\n\nSomeone did.\n\nShe left it where it would be found and went on with the day's work, though the whole house seemed newly full of draft, reflection, and the dangerous possibility of being understood.",
+        "word_count": 1264,
+        "source_url": "https://example.com/novel/glass-house/chapter-2"
+      }
+    ]
+  },
+  {
+    "id": "midnight-archive",
+    "slug": "midnight-archive",
+    "title": "The Midnight Archive",
+    "author": "A. Vale",
+    "description": "An archivist in a storm-bent city discovers that forgotten books are quietly rewriting the nights around her.",
+    "source_site": "local-json",
+    "source_url": "https://example.com/novel/midnight-archive",
+    "status": "ongoing",
+    "cover_url": null,
+    "tags": ["mystery", "slow burn", "literary fantasy"],
+    "chapters": [
+      {
+        "id": "001",
+        "chapter_number": 1,
+        "title": "Chapter 1. Rain on the Vault Roof",
+        "content": "By the time Elian reached the archive, the entire hill smelled of wet stone and iron. Rain gathered in the seams of the old steps and slid downward in narrow silver threads.\n\nThe front doors had swollen in the storm again. She leaned her shoulder into one, felt the wood give reluctantly, and slipped inside with her satchel tight under one arm.\n\nThe building always carried two temperatures at once. Near the entrance, the air was cold and mineral. Deeper in, beyond the catalog hall and the sealed stacks, there was a dry warmth that belonged more to paper than to any fireplace.\n\nElian stood still until the quiet settled around her. It was never complete quiet. Somewhere overhead, the vault roof clicked softly as it cooled. Water tapped in a gutter. Pages shifted in bindings that had learned, after decades, how to breathe with the weather.\n\nShe lit the desk lamp in the receiving room and opened the ledger to today's date. Three returns. One repair request. One unsigned note tucked between the pages, written in a hand she did not recognize: The south alcove is longer at night.\n\nElian read the line twice, then shut the ledger with a practiced calm. The city left messages for institutions the way some people fed stray cats. Quietly. Repeatedly. With a belief that eventually something might answer.\n\nShe hung her damp coat, took up the brass key ring, and started toward the sealed wing.",
+        "word_count": 1382,
+        "source_url": "https://example.com/novel/midnight-archive/chapter-1"
+      },
+      {
+        "id": "002",
+        "chapter_number": 2,
+        "title": "Chapter 2. A Shelf That Wasn't There Yesterday",
+        "content": "The south alcove was supposed to end with a blank wall of green marble. Elian knew the proportions by memory. Seven shelves on the left, seven on the right, the wall ahead, and the narrow reading niche beneath the lamp.\n\nTonight there were eight shelves on the left.\n\nShe did not approach immediately. It was an old rule of hers, one never written in the archive manuals: when a room changes, let the room admit it first.\n\nThe lamp in the niche burned with its usual pearled light. Nothing seemed wrong except the extra unit of walnut shelving, fitted so neatly between two original uprights that the eye wanted to forgive it.\n\nElian crossed the stone tiles one measured step at a time. The new shelf held twelve books, all unmarked at the spine. Their bindings were matte black, like paper rubbed smooth by handling, but when she touched one it felt faintly warm.\n\nNot warm from a fire. Warm like a hand had just left it.\n\nThe first page of the first book contained a single line.\n\nIf a memory is cataloged, does it stop wandering?\n\nElian shut the cover at once, more annoyed than afraid. The archive had trained her out of theatrical responses. But annoyance was sometimes only fear with better posture.\n\nShe took the book to the reading niche, set it beside the lamp, and realized that the unsigned note in the ledger had not warned her about an alcove becoming longer. It had warned her about the hour in which it would happen.",
+        "word_count": 1524,
+        "source_url": "https://example.com/novel/midnight-archive/chapter-2"
+      },
+      {
+        "id": "003",
+        "chapter_number": 3,
+        "title": "Chapter 3. Marginalia at 2:13 A.M.",
+        "content": "At 2:13 in the morning, the city buses stopped climbing the hill. The archive entered its truest kind of silence then, the kind in which every small motion acquired significance.\n\nElian turned the second black book over in her hands and found notes written in the margins of pages that were otherwise blank. The handwriting shifted from page to page. Some careful, some hurried, some full of extravagant loops that looked almost embarrassed by themselves.\n\nDo not shelve this with the atlases.\n\nThe room remembers more than the readers do.\n\nCheck the west window when the rain moves sideways.\n\nShe copied each sentence into her notebook before daring to look up. The lamp seemed lower than before, or perhaps the ceiling higher. That was the difficulty of the archive after midnight. It did not always change objects. Sometimes it changed the confidence with which you measured them.\n\nWhen rain struck the west window, it did not sound like weather. It sounded like fingertips, insistent and orderly.\n\nElian carried the notebook to the pane and found, on the fogged glass, a line traced from the outside in a single clean stroke.\n\nRETURN WHAT WAS BORROWED.\n\nShe stared long enough for the letters to blur. Then, with a steadier hand than she felt, she wrote beneath them from the inside.\n\nTell me by whom.\n\nThe answer did not appear. But somewhere in the sealed wing, a shelf shifted with the long, wooden sigh of something making room.",
+        "word_count": 1603,
+        "source_url": "https://example.com/novel/midnight-archive/chapter-3"
+      }
+    ]
   }
 ]
